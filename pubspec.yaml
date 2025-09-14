@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0 <4.0.0' # Perbarui SDK constraint untuk kompatibilitas
+  sdk: '>=3.2.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -24,7 +24,7 @@ dependencies:
 
   # Utilitas
   cupertino_icons: ^1.0.8
-  flutter_local_notifications: ^17.2.1
+  flutter_local_notifications: ^15.1.1
   timezone: ^0.9.4
   local_auth: ^2.2.0
   shared_preferences: ^2.2.3

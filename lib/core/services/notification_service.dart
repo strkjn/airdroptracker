@@ -1,4 +1,4 @@
-import 'package.flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -7,26 +7,22 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // Inisialisasi untuk Android
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('ic_launcher');
 
-    // Inisialisasi untuk iOS
-    const DarwinInitializationSettings initializationSettingsIOS =
+    final DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    final InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
 
     await _notificationsPlugin.initialize(initializationSettings);
-
-    // Inisialisasi timezone
     tz.initializeTimeZones();
   }
 
@@ -36,35 +32,45 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+    final tz.TZDateTime scheduledDate = _nextInstanceOfTime(hour, minute);
+    
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'daily_summary_channel',
+      'Ringkasan Tugas Harian',
+      channelDescription: 'Notifikasi yang merangkum tugas harian.',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
+
     await _notificationsPlugin.zonedSchedule(
-      0, // ID notifikasi
+      0,
       title,
       body,
-      _nextInstanceOfTime(hour, minute),
+      scheduledDate,
       const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_summary_channel',
-          'Ringkasan Tugas Harian',
-          channelDescription: 'Notifikasi yang merangkum tugas harian.',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
+        android: androidDetails,
+        iOS: iosDetails,
       ),
-      // --- BARIS YANG DIPERLUKAN DITAMBAHKAN DI SINI ---
-      uiLocalNotificationDateInterpretation: 
+      uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      // ------------------------------------------------
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  // Fungsi bantuan untuk mendapatkan jadwal berikutnya dari waktu yang ditentukan
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }

@@ -9,7 +9,7 @@ class NotificationService {
   Future<void> init() async {
     // Inisialisasi untuk Android
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_launcher'); // Menggunakan ikon aplikasi default
+        AndroidInitializationSettings('ic_launcher');
 
     // Inisialisasi untuk iOS
     const DarwinInitializationSettings initializationSettingsIOS =
@@ -25,8 +25,6 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(initializationSettings);
-
-    // Inisialisasi timezone
     tz.initializeTimeZones();
   }
 
@@ -51,12 +49,14 @@ class NotificationService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
+      // PARAMETER WAJIB DITAMBAHKAN
+      uiLocalNotificationDateInterpretation: 
+          UILocalNotificationDateInterpretation.absoluteTime,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // Ulangi setiap hari pada waktu yang sama
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  // Fungsi bantuan untuk mendapatkan jadwal berikutnya dari waktu yang ditentukan
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate =
