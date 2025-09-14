@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "298395940261",
+    "project_id": "airdrop-flow",
+    "storage_bucket": "airdrop-flow.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:298395940261:android:fdcb83cd7e25601019244c",
+        "android_client_info": {
+          "package_name": "com.example.airdrop_flow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmOsvLzQJKHsuTfka138o5jS2FlcqsdOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:298395940261:android:c7a6cb16cea8950119244c",
+        "android_client_info": {
+          "package_name": "com.example.airdroptracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmOsvLzQJKHsuTfka138o5jS2FlcqsdOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
