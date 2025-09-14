@@ -4,17 +4,15 @@ import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// --- KODE YANG DIPERBARUI DAN DISEMPURNAKAN ---
-
-// Mengubah dari Provider menjadi StreamProvider yang benar.
-// Ini adalah cara yang tepat untuk mengubah (transform) data dari stream lain.
 final processedTasksProvider =
     StreamProvider.family<List<Task>, String>((ref, projectId) {
-  // 1. Pantau stream tugas asli dari Firestore.
-  final tasksStream = ref.watch(tasksStreamProvider(projectId));
+  // 1. Ambil STREAM asli dari provider sumber.
+  // Perhatikan penggunaan .stream di akhir. Ini memberikan kita objek Stream,
+  // bukan AsyncValue, yang memungkinkan kita untuk me-transform-nya.
+  final tasksStream = ref.watch(tasksStreamProvider(projectId).stream);
 
-  // 2. Gunakan .map() pada stream untuk mengubah setiap daftar tugas yang masuk.
-  //    Ini akan secara otomatis menangani status loading/error dari stream asli.
+  // 2. Gunakan .map() dari Stream untuk mengubah setiap list data yang masuk.
+  // Riverpod akan secara otomatis menangani state loading dan error dari stream asli.
   return tasksStream.map((tasks) {
     final now = DateTime.now();
 
@@ -32,7 +30,8 @@ final processedTasksProvider =
         }
 
         if (shouldReset) {
-          // Buat instance Task baru dengan status isCompleted = false
+          // Buat instance Task baru dengan isCompleted = false
+          // Ini adalah praktik yang baik (immutable state).
           return Task(
             id: task.id,
             projectId: task.projectId,

@@ -7,15 +7,11 @@ import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/features/projects/providers/project_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT BARU UNTUK KALENDER ---
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
-
-// --- PERUBAHAN: Mengubah menjadi ConsumerStatefulWidget untuk mengelola state kalender ---
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final Project project;
-
   const ProjectDetailPage({super.key, required this.project});
 
   @override
@@ -23,25 +19,15 @@ class ProjectDetailPage extends ConsumerStatefulWidget {
 }
 
 class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
-  // --- BARU: State untuk kalender ---
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  late final ValueNotifier<List<Task>> _completedTasksOnSelectedDay;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _completedTasksOnSelectedDay = ValueNotifier([]);
   }
 
-  @override
-  void dispose() {
-    _completedTasksOnSelectedDay.dispose();
-    super.dispose();
-  }
-
-  // --- BARU: Fungsi untuk mengambil daftar tugas yang selesai pada tanggal tertentu ---
   List<Task> _getTasksForDay(DateTime day, List<Task> allTasks) {
     return allTasks.where((task) {
       return task.lastCompletedTimestamp != null &&
@@ -52,6 +38,9 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   @override
   Widget build(BuildContext context) {
     final tasksAsyncValue = ref.watch(processedTasksProvider(widget.project.id));
+    final completedTasksOnSelectedDay = tasksAsyncValue.whenData(
+      (allTasks) => _getTasksForDay(_selectedDay!, allTasks)
+    ).value ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -67,94 +56,76 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- BAGIAN BARU: WIDGET KALENDER ---
-            tasksAsyncValue.when(
-              data: (allTasks) {
-                // Saat data tugas berubah, perbarui daftar tugas untuk hari yang dipilih
-                _completedTasksOnSelectedDay.value = _getTasksForDay(_selectedDay!, allTasks);
-                
-                return TableCalendar<Task>(
-                  firstDay: DateTime.utc(2022, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                  calendarFormat: CalendarFormat.month,
-                  startingDayOfWeek: StartingDayOfWeek.monday,
-                  // Fungsi ini untuk menandai hari-hari yang memiliki aktivitas
-                  eventLoader: (day) => _getTasksForDay(day, allTasks),
-                  onDaySelected: (selectedDay, focusedDay) {
-                    if (!isSameDay(_selectedDay, selectedDay)) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                        // Perbarui daftar tugas yang ditampilkan di bawah kalender
-                        _completedTasksOnSelectedDay.value = _getTasksForDay(selectedDay, allTasks);
-                      });
-                    }
-                  },
-                  onPageChanged: (focusedDay) {
-                    _focusedDay = focusedDay;
-                  },
-                  calendarBuilders: CalendarBuilders(
-                    markerBuilder: (context, date, events) {
-                      if (events.isNotEmpty) {
-                        return Positioned(
-                          right: 1,
-                          bottom: 1,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Theme.of(context).primaryColor,
-                            ),
-                            width: 7,
-                            height: 7,
-                          ),
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                );
+            TableCalendar<Task>(
+              firstDay: DateTime.utc(2022, 1, 1),
+              lastDay: DateTime.utc(2030, 12, 31),
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              calendarFormat: CalendarFormat.month,
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              eventLoader: (day) {
+                return tasksAsyncValue.whenData(
+                  (allTasks) => _getTasksForDay(day, allTasks)
+                ).value ?? [];
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+              onDaySelected: (selectedDay, focusedDay) {
+                if (!isSameDay(_selectedDay, selectedDay)) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+                }
+              },
+              onPageChanged: (focusedDay) {
+                _focusedDay = focusedDay;
+              },
+              calendarBuilders: CalendarBuilders(
+                markerBuilder: (context, date, events) {
+                  if (events.isNotEmpty) {
+                    return Positioned(
+                      right: 1,
+                      bottom: 1,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                        width: 7,
+                        height: 7,
+                      ),
+                    );
+                  }
+                  return null;
+                },
+              ),
             ),
             const Divider(),
-
-            // --- BAGIAN BARU: DAFTAR AKTIVITAS PADA TANGGAL TERPILIH ---
-            ValueListenableBuilder<List<Task>>(
-              valueListenable: _completedTasksOnSelectedDay,
-              builder: (context, tasksOnDay, _) {
-                if (tasksOnDay.isEmpty) {
-                  return Padding(
+            if (completedTasksOnSelectedDay.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Tidak ada aktivitas pada ${DateFormat.yMMMMd().format(_selectedDay!)}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              )
+            else
+              Column(
+                children: [
+                  Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
-                      'Tidak ada aktivitas pada ${DateFormat.yMMMMd().format(_selectedDay!)}',
+                      'Aktivitas pada ${DateFormat.yMMMMd().format(_selectedDay!)}',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  );
-                }
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Aktivitas pada ${DateFormat.yMMMMd().format(_selectedDay!)}',
-                         style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    ...tasksOnDay.map((task) => ListTile(
-                          leading: const Icon(Icons.check_circle, color: Colors.green),
-                          title: Text(task.name),
-                          subtitle: Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}'),
-                        )),
-                  ],
-                );
-              },
-            ),
+                  ),
+                  ...completedTasksOnSelectedDay.map((task) => ListTile(
+                        leading: const Icon(Icons.check_circle, color: Colors.green),
+                        title: Text(task.name),
+                        subtitle: Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}'),
+                      )),
+                ],
+              ),
             const Divider(),
-
-            // --- BAGIAN LAMA: DAFTAR SEMUA TUGAS (TETAP ADA) ---
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text('Semua Tugas Proyek', style: Theme.of(context).textTheme.titleLarge),
@@ -165,10 +136,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'Belum ada tugas di proyek ini.',
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text('Belum ada tugas di proyek ini.'),
                     ),
                   );
                 }
@@ -199,8 +167,11 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   },
                 );
               },
-              loading: () => const SizedBox.shrink(), // Loading sudah dihandle di atas
-              error: (err, stack) => Center(child: Text('Error: $err')),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (err, stack) => Center(child: Text('Gagal memuat tugas: $err')),
             ),
           ],
         ),
@@ -213,7 +184,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     );
   }
 
-  // Fungsi dialog tidak berubah
   void _showApplyTemplateDialog(BuildContext context, WidgetRef ref, String projectId) {
     final templatesAsync = ref.watch(taskTemplatesStreamProvider);
     showDialog(
@@ -307,7 +277,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   }
 }
 
-// Widget TaskTile tidak berubah
 class TaskTile extends ConsumerWidget {
   const TaskTile({super.key, required this.task});
   final Task task;

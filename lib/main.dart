@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // <-- 1. IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- IMPORT BARU
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'features/auth/view/auth_gate.dart';
@@ -17,6 +18,12 @@ void main() async {
   await notificationService.init();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // 2. TAMBAHKAN BLOK INI UNTUK MENGAKTIFKAN CACHE
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
 
   runApp(const ProviderScope(child: MyApp()));
 }
