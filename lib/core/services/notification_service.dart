@@ -1,4 +1,4 @@
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package.flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -9,7 +9,7 @@ class NotificationService {
   Future<void> init() async {
     // Inisialisasi untuk Android
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_launcher'); // Menggunakan ikon aplikasi default
+        AndroidInitializationSettings('ic_launcher');
 
     // Inisialisasi untuk iOS
     const DarwinInitializationSettings initializationSettingsIOS =
@@ -51,10 +51,12 @@ class NotificationService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
+      // --- BARIS YANG DIPERLUKAN DITAMBAHKAN DI SINI ---
+      uiLocalNotificationDateInterpretation: 
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Ulangi setiap hari pada waktu yang sama
+      // ------------------------------------------------
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 

@@ -22,24 +22,25 @@ class Task {
   });
 
   factory Task.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> snapshot,
-    String projectId,
-  ) {
-    final data = snapshot.data()!;
-    return Task(
-      id: snapshot.id,
-      projectId: projectId,
-      name: data['name'] ?? '',
-      taskUrl: data['taskUrl'] ?? '',
-      category: TaskCategory.values.firstWhere(
-        (e) => e.name == data['category'],
-        orElse: () => TaskCategory.OneTime,
-      ),
-      isCompleted: data['isCompleted'] ?? false,
-      lastCompletedTimestamp: (data['lastCompletedTimestamp'] as Timestamp?)
-          ?.toDate(),
-    );
-  }
+  DocumentSnapshot<Map<String, dynamic>> snapshot,
+  String projectId,
+) {
+  final data = snapshot.data()!;
+  // Perubahan di sini: Mengambil timestamp bisa null
+  final timestamp = data['lastCompletedTimestamp'] as Timestamp?;
+  return Task(
+    id: snapshot.id,
+    projectId: projectId,
+    name: data['name'] ?? '',
+    taskUrl: data['taskUrl'] ?? '',
+    category: TaskCategory.values.firstWhere(
+      (e) => e.name == data['category'],
+      orElse: () => TaskCategory.OneTime,
+    ),
+    isCompleted: data['isCompleted'] ?? false,
+    lastCompletedTimestamp: timestamp?.toDate(), // Gunakan ?.toDate()
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {

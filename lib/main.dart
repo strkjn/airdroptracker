@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'core/services/notification_service.dart'; // <-- 1. Import service baru
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- IMPORT BARU
+import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'features/auth/view/auth_gate.dart';
 
-// 2. Buat instance global dari service agar bisa diakses
 final NotificationService notificationService = NotificationService();
 
 void main() async {
-  // Pastikan semua binding framework siap sebelum menjalankan kode lain
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 3. Inisialisasi service notifikasi saat aplikasi dimulai
+  // Memuat environment variables dari file .env
+  await dotenv.load(fileName: ".env");
+
   await notificationService.init();
 
-  // Inisialisasi Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const ProviderScope(child: MyApp()));

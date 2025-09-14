@@ -1,4 +1,5 @@
-import 'package:airdrop_flow/core/services/auth_service.dart';
+import 'package:airdrop_flow/core/providers/firebase_providers.dart'; // Menggunakan provider yang sudah ada
+import 'package:firebase_auth/firebase_auth.dart'; // <-- IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,7 +32,8 @@ class RegisterPage extends ConsumerWidget {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () async {
-                final currentContext = context;
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
 
                 try {
                   await ref
@@ -41,17 +43,23 @@ class RegisterPage extends ConsumerWidget {
                         password: passwordController.text.trim(),
                       );
 
-                  if (currentContext.mounted) {
-                    Navigator.of(currentContext).pop();
-                  }
+                  // Kembali ke halaman login setelah berhasil mendaftar
+                  navigator.pop();
+
+                } on FirebaseAuthException catch (e) {
+                  // Menangkap error spesifik dari Firebase Auth
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal mendaftar: ${e.message ?? "Terjadi kesalahan."}'),
+                    ),
+                  );
                 } catch (e) {
-                  if (currentContext.mounted) {
-                    ScaffoldMessenger.of(currentContext).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal mendaftar: ${e.toString()}'),
-                      ),
-                    );
-                  }
+                  // Menangkap error umum lainnya
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Terjadi kesalahan: ${e.toString()}'),
+                    ),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(

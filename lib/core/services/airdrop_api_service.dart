@@ -2,37 +2,38 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:airdrop_flow/core/models/airdrop_opportunity_model.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- IMPORT BARU
 
 class AirdropApiService {
-  // --- TEMPAT ANDA MENGISI API KEY ---
-  // Ganti 'YOUR_API_KEY' dengan API Key asli Anda dari CryptoRank.
-  final String _apiKey = 'Y7adccaac8a483a774b8438c6b2ff1b8075d5f1622bdd63068d4b71d5ca5c';
+  // Ambil API Key dari environment variables
+  final String _apiKey = dotenv.env['CRYPTO_RANK_API_KEY'] ?? '';
 
-  // --- URL UNTUK API ---
-  // URL ini sudah disiapkan untuk V2, ganti jika URL sebenarnya berbeda.
-  final String _baseUrl = 'https://api.cryptorank.io/v2';
+  final String _baseUrl = 'https://api.cryptorank.io/v2/airdrops'; // URL diperbarui
 
   Future<List<AirdropOpportunity>> fetchAirdrops() async {
-    // 1. Validasi API Key sebelum melakukan panggilan
-    if (_apiKey == '7adccaac8a483a774b8438c6b2ff1b8075d5f1622bdd63068d4b71d5ca5c' || _apiKey.isEmpty) {
-      throw Exception('API Key belum diatur. Silakan periksa file airdrop_api_service.dart');
+    if (_apiKey.isEmpty) {
+      throw Exception('API Key tidak ditemukan. Pastikan file .env sudah benar.');
     }
 
     try {
-      // 2. Melakukan panggilan ke API
-      final response = await http.get(Uri.parse('$_baseUrl?api_key=$_apiKey'));
+      final response = await http.get(
+        Uri.parse(_baseUrl),
+        headers: {
+          'api_key': _apiKey, // API Key dikirim sebagai header
+        },
+      );
 
-      // 3. Menangani respons dari server
       if (response.statusCode != 200) {
-        throw Exception('Gagal memuat data airdrop. Status: ${response.statusCode}');
+        // Coba parsing pesan error dari API jika ada
+        final errorBody = json.decode(response.body);
+        final errorMessage = errorBody['status']?['error_message'] ?? 'Status: ${response.statusCode}';
+        throw Exception('Gagal memuat data airdrop: $errorMessage');
       }
 
-      // 4. Mengubah teks JSON menjadi data yang bisa dibaca Dart
       final List<dynamic> data = json.decode(response.body)['data'];
       
       final opportunities = <AirdropOpportunity>[];
       for (final jsonItem in data) {
-        // Validasi: Hanya proses item yang memiliki nama
         if (jsonItem['name'] != null && jsonItem['name'].isNotEmpty) {
           opportunities.add(AirdropOpportunity.fromJson(jsonItem));
         }
@@ -40,11 +41,9 @@ class AirdropApiService {
       return opportunities;
 
     } on SocketException {
-      // 5. Menangani error jika tidak ada koneksi internet
       throw Exception('Tidak ada koneksi internet. Silakan periksa jaringan Anda.');
     } catch (e) {
-      // 6. Menangani semua jenis error lainnya
-      throw Exception('Terjadi kesalahan saat mengambil data: $e');
+      throw Exception('Terjadi kesalahan: ${e.toString()}');
     }
   }
 }

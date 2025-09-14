@@ -1,5 +1,6 @@
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/features/auth/view/register_page.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // <-- IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +33,9 @@ class LoginPage extends ConsumerWidget {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () async {
+                // Gunakan 'context' yang valid sebelum pemanggilan async
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+
                 try {
                   await ref
                       .read(authServiceProvider)
@@ -39,9 +43,15 @@ class LoginPage extends ConsumerWidget {
                         email: emailController.text.trim(),
                         password: passwordController.text.trim(),
                       );
+                } on FirebaseAuthException catch (e) {
+                  // Menangkap error spesifik dari Firebase Auth
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text('Gagal login: ${e.message ?? "Terjadi kesalahan."}')),
+                  );
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal login: ${e.toString()}')),
+                  // Menangkap error umum lainnya
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
                   );
                 }
               },
