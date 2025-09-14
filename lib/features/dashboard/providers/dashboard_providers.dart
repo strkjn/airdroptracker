@@ -1,73 +1,121 @@
-// lib/features/dashboard/providers/dashboard_providers.dart
-
+import 'dart:async';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Provider ini akan mengambil SEMUA tugas dari SEMUA proyek aktif.
-// Ini bisa menjadi operasi yang berat jika datanya banyak.
 final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
+  final controller = StreamController<List<Task>>();
 
-  // Pantau stream proyek
-  return firestoreService.getProjects().asyncMap((projects) async {
-    // Filter hanya proyek yang aktif
-    final activeProjects =
-        projects.where((p) => p.status == ProjectStatus.active).toList();
-    if (activeProjects.isEmpty) {
-      return [];
+  final taskDataCache = <String, List<Task>>{};
+  final taskSubscriptions = <String, StreamSubscription>{};
+
+  void pushUpdatedTasks() {
+    final allTasks = taskDataCache.values.expand((tasks) => tasks).toList();
+    if (!controller.isClosed) {
+      controller.add(allTasks);
+    }
+  }
+
+  final projectsSubscription = firestoreService.getProjects().listen((projects) {
+    final activeProjects = projects.where((p) => p.status == ProjectStatus.active);
+    final activeProjectIds = activeProjects.map((p) => p.id).toSet();
+
+    final oldIds = taskSubscriptions.keys.toSet();
+    final removedIds = oldIds.difference(activeProjectIds);
+    for (final id in removedIds) {
+      taskSubscriptions[id]?.cancel();
+      taskSubscriptions.remove(id);
+      taskDataCache.remove(id);
     }
 
-    // Ambil stream tugas untuk setiap proyek aktif
-    final tasksFutures = activeProjects.map((project) {
-      return firestoreService.getTasksForProject(project.id).first;
-    }).toList();
-
-    // Tunggu semua data tugas selesai dimuat
-    final listOfTaskLists = await Future.wait(tasksFutures);
-
-    // Gabungkan semua daftar tugas menjadi satu daftar besar
-    return listOfTaskLists.expand((taskList) => taskList).toList();
+    for (final project in activeProjects) {
+      if (!taskSubscriptions.containsKey(project.id)) {
+        taskSubscriptions[project.id] =
+            firestoreService.getTasksForProject(project.id).listen((tasks) {
+          taskDataCache[project.id] = tasks;
+          pushUpdatedTasks();
+        });
+      }
+    }
+    
+    pushUpdatedTasks();
   });
+
+  ref.onDispose(() {
+    projectsSubscription.cancel();
+    for (final sub in taskSubscriptions.values) {
+      sub.cancel();
+    }
+    controller.close();
+  });
+
+  return controller.stream;
 });
 
-
-// Provider BARU yang lebih efisien untuk tugas hari ini
 final todaysTasksProvider = Provider<AsyncValue<List<Task>>>((ref) {
-  // Pantau hasil dari provider di atas
   final allTasksAsync = ref.watch(allActiveTasksProvider);
 
-  // Lakukan pemfilteran hanya jika data sudah tersedia
   return allTasksAsync.whenData((tasks) {
     final now = DateTime.now();
+    final resetTime = DateTime(now.year, now.month, now.day, 7);
+    
     final List<Task> todaysTasks = [];
 
-    for (final task in tasks) {
-      bool isDueToday = false;
-
-      // Logika untuk menentukan apakah tugas jatuh tempo hari ini
-      if (!task.isCompleted) {
-        isDueToday = true;
-      } else {
-        if (task.lastCompletedTimestamp != null) {
-          if (task.category == TaskCategory.Daily &&
-              now.difference(task.lastCompletedTimestamp!).inHours >= 24) {
-            isDueToday = true;
-          } else if (task.category == TaskCategory.Weekly &&
-              now.difference(task.lastCompletedTimestamp!).inDays >= 7) {
-            isDueToday = true;
-          }
-        }
+    bool isTaskDueForReset(Task task) {
+      if (!task.isCompleted || task.lastCompletedTimestamp == null) {
+        return false; 
       }
-
-      if (isDueToday) {
-        todaysTasks.add(task);
+      
+      final lastCompleted = task.lastCompletedTimestamp!;
+      
+      if (now.isAfter(resetTime)) {
+        return lastCompleted.isBefore(resetTime);
+      } else {
+        final yesterdayResetTime = resetTime.subtract(const Duration(days: 1));
+        return lastCompleted.isBefore(yesterdayResetTime);
       }
     }
 
-    // Urutkan tugas agar yang belum selesai muncul di atas
-    todaysTasks.sort((a, b) => a.isCompleted ? 1 : -1);
+    for (final task in tasks) {
+      bool isTodaysTask = false;
+      bool isReset = isTaskDueForReset(task);
+
+      switch (task.category) {
+        case TaskCategory.OneTime:
+          if (!task.isCompleted) {
+            isTodaysTask = true;
+          }
+          break;
+        case TaskCategory.Daily:
+        case TaskCategory.Weekly:
+          isTodaysTask = true;
+          break;
+      }
+      
+      if (isTodaysTask) {
+        if (isReset) {
+          todaysTasks.add(Task(
+            id: task.id,
+            projectId: task.projectId,
+            name: task.name,
+            taskUrl: task.taskUrl,
+            category: task.category,
+            isCompleted: false, 
+            lastCompletedTimestamp: task.lastCompletedTimestamp,
+          ));
+        } else {
+          todaysTasks.add(task);
+        }
+      }
+    }
+
+    todaysTasks.sort((a, b) {
+      if (a.isCompleted && !b.isCompleted) return 1;
+      if (!a.isCompleted && b.isCompleted) return -1;
+      return 0;
+    });
 
     return todaysTasks;
   });

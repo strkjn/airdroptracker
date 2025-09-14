@@ -45,6 +45,17 @@ class FirestoreService {
     });
   }
 
+  // --- TAMBAHKAN METHOD BARU DI SINI ---
+  Future<Project?> getProjectById(String projectId) async {
+    if (_userId == null) return null;
+    final doc = await _userCollection('projects').doc(projectId).get();
+    if (doc.exists) {
+      return Project.fromFirestore(doc);
+    }
+    return null;
+  }
+  // ------------------------------------
+
   // --- Task Methods ---
   Future<void> addTaskToProject({
     required String projectId,
