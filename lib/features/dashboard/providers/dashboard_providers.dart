@@ -4,6 +4,7 @@ import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// Provider allActiveTasksProvider tidak perlu diubah.
 final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
   final controller = StreamController<List<Task>>();
@@ -39,7 +40,7 @@ final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
         });
       }
     }
-    
+
     pushUpdatedTasks();
   });
 
@@ -54,55 +55,61 @@ final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   return controller.stream;
 });
 
+// --- PERBAIKAN UTAMA ADA DI SINI ---
 final todaysTasksProvider = Provider<AsyncValue<List<Task>>>((ref) {
-  final allTasksAsync = ref.watch(allActiveTasksProvider);
-
-  return allTasksAsync.whenData((tasks) {
+  return ref.watch(allActiveTasksProvider).whenData((tasks) {
     final now = DateTime.now();
-    final resetTime = DateTime(now.year, now.month, now.day, 7);
-    
-    final List<Task> todaysTasks = [];
+    final todaysResetTime = DateTime(now.year, now.month, now.day, 7);
+    final startOfDashboardDay = now.isBefore(todaysResetTime)
+        ? todaysResetTime.subtract(const Duration(days: 1))
+        : todaysResetTime;
 
-    bool isTaskDueForReset(Task task) {
-      if (!task.isCompleted || task.lastCompletedTimestamp == null) {
-        return false; 
-      }
-      
-      final lastCompleted = task.lastCompletedTimestamp!;
-      
-      if (now.isAfter(resetTime)) {
-        return lastCompleted.isBefore(resetTime);
-      } else {
-        final yesterdayResetTime = resetTime.subtract(const Duration(days: 1));
-        return lastCompleted.isBefore(yesterdayResetTime);
-      }
-    }
+    final List<Task> todaysTasks = [];
 
     for (final task in tasks) {
       bool isTodaysTask = false;
-      bool isReset = isTaskDueForReset(task);
+      bool needsReset = false;
 
+      // Hanya periksa reset jika tugas sudah selesai
+      if (task.isCompleted && task.lastCompletedTimestamp != null) {
+        
+        // ==== FIX: LOGIKA RESET SEKARANG HANYA UNTUK DAILY & WEEKLY ====
+        if (task.category == TaskCategory.Daily) {
+          if (task.lastCompletedTimestamp!.isBefore(startOfDashboardDay)) {
+            needsReset = true;
+          }
+        } else if (task.category == TaskCategory.Weekly) {
+          if (now.difference(task.lastCompletedTimestamp!).inDays >= 7) {
+            needsReset = true;
+          }
+        }
+        // Tugas OneTime akan dilewati, sehingga 'needsReset' tetap false.
+      }
+
+      // Tentukan apakah tugas harus ditampilkan di dashboard hari ini
       switch (task.category) {
         case TaskCategory.OneTime:
+          // TUGAS ONETIME HANYA MUNCUL JIKA BELUM SELESAI.
           if (!task.isCompleted) {
             isTodaysTask = true;
           }
           break;
         case TaskCategory.Daily:
         case TaskCategory.Weekly:
+          // Tugas harian & mingguan selalu relevan untuk ditampilkan.
           isTodaysTask = true;
           break;
       }
       
       if (isTodaysTask) {
-        if (isReset) {
+        if (needsReset) {
           todaysTasks.add(Task(
             id: task.id,
             projectId: task.projectId,
             name: task.name,
             taskUrl: task.taskUrl,
             category: task.category,
-            isCompleted: false, 
+            isCompleted: false, // Status di-reset
             lastCompletedTimestamp: task.lastCompletedTimestamp,
           ));
         } else {
@@ -111,6 +118,7 @@ final todaysTasksProvider = Provider<AsyncValue<List<Task>>>((ref) {
       }
     }
 
+    // Urutkan daftar agar tugas yang belum selesai ada di atas
     todaysTasks.sort((a, b) {
       if (a.isCompleted && !b.isCompleted) return 1;
       if (!a.isCompleted && b.isCompleted) return -1;
