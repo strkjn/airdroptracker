@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // <-- 1. IMPORT BARU
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,7 +19,7 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // 2. TAMBAHKAN BLOK INI UNTUK MENGAKTIFKAN CACHE
+  // Mengaktifkan cache Firestore
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
@@ -35,10 +35,31 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Airdrop Flow',
+      themeMode: ThemeMode.dark,
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: Colors.transparent,
+        
+        // Perbaikan ada di blok ini
+        cardTheme: CardThemeData( // Diubah dari CardTheme menjadi CardThemeData
+          elevation: 2,
+          color: Colors.white.withAlpha(13), // Diubah ke withAlpha untuk menghindari deprecated
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        useMaterial3: true,
+      ),
+      
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+
       home: const AuthGate(),
     );
   }

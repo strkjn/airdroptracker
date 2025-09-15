@@ -7,26 +7,46 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      // Dekorasi untuk membuat latar belakang gradasi
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center, // Pusat gradasi di tengah layar
-          radius: 1.2, // Radius gradasi, >1.0 agar warna terluar lebih dominan di sudut
-          colors: [
-            Color(0xFF1a1a2e), // Warna tengah yang lebih gelap (biru kehitaman)
-            Color(0xFF16213e), // Warna transisi
-            Color(0xFF4a2e6f), // Warna ungu gelap di bagian luar
-          ],
-          stops: [
-            0.0, // Posisi awal warna tengah
-            0.5, // Posisi transisi
-            1.0, // Posisi akhir warna ungu
-          ],
+    // Menggunakan Stack untuk menumpuk beberapa lapisan
+    return Stack(
+      children: [
+        // Lapisan 1: Warna dasar hitam pekat
+        Container(color: Colors.black),
+
+        // Lapisan 2: Gradasi ungu dari pojok kanan bawah
+        Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.bottomRight,
+              radius: 0.9,
+              colors: [
+                Color(0xFF4a2e6f), // Warna ungu
+                Colors.transparent,
+              ],
+              stops: [0.0, 0.8],
+            ),
+          ),
         ),
-      ),
-      // Kita tidak perlu Scaffold di sini, langsung tampilkan konten `child`
-      child: child,
+
+        // Lapisan 3: Gradasi biru dari atas
+        Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.2, // Radius lebih besar agar lebih menyebar & lembut
+              colors: [
+                Color(0xFF16213e), // Warna biru tua sebagai aksen atas
+                Colors.transparent,
+              ],
+              stops: [0.0, 0.7], // Memudar sedikit lebih cepat
+            ),
+          ),
+        ),
+
+        // Lapisan 4: Konten utama aplikasi Anda
+        // Ditampilkan di atas semua lapisan latar belakang
+        child,
+      ],
     );
   }
 }

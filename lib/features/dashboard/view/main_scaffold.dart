@@ -1,4 +1,5 @@
-import 'package:airdrop_flow/core/widgets/app_background.dart'; // <-- 1. Tambahkan import ini
+import 'dart:ui';
+import 'package:airdrop_flow/core/widgets/app_background.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:airdrop_flow/features/dashboard/view/dashboard_page.dart';
 import 'package:airdrop_flow/features/discover/view/discover_page.dart';
@@ -8,6 +9,8 @@ import 'package:airdrop_flow/features/settings/view/settings_page.dart';
 import 'package:airdrop_flow/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// IMPORT BARU UNTUK NAVIGASI ANIMASI
+import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
@@ -24,6 +27,13 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     const ProjectListPage(),
     const DiscoverPage(),
     const SettingsPage(),
+  ];
+
+  final iconList = <IconData>[
+    Icons.dashboard_outlined,
+    Icons.list_alt_outlined,
+    Icons.explore_outlined,
+    Icons.settings_outlined,
   ];
 
   @override
@@ -49,20 +59,23 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       }
     });
   }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
+  
   @override
   Widget build(BuildContext context) {
-    // 2. Bungkus Scaffold dengan widget AppBackground
     return AppBackground(
       child: Scaffold(
-        // 3. Buat Scaffold menjadi transparan agar latar belakang terlihat
         backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          title: Text(_getAppBarTitle(_selectedIndex)),
+        ),
         body: Center(child: _widgetOptions[_selectedIndex]),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
@@ -72,43 +85,42 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   builder: (context) => const AddEditProjectPage()),
             );
           },
-          child: const Icon(Icons.add),
+          backgroundColor: Theme.of(context).colorScheme.primary,
           shape: const CircleBorder(),
+          child: const Icon(Icons.add),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: BottomAppBar(
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8.0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              _buildNavItem(
-                  icon: Icons.dashboard_outlined, label: 'Dashboard', index: 0),
-              _buildNavItem(
-                  icon: Icons.list_alt_outlined, label: 'Proyek', index: 1),
-              const SizedBox(width: 40),
-              _buildNavItem(
-                  icon: Icons.explore_outlined, label: 'Discover', index: 2),
-              _buildNavItem(
-                  icon: Icons.settings_outlined, label: 'Pengaturan', index: 3),
-            ],
-          ),
+        
+        // --- NAVIGASI BAWAH BARU DENGAN EFEK KACA DAN ANIMASI ---
+        bottomNavigationBar: AnimatedBottomNavigationBar(
+          icons: iconList,
+          activeIndex: _selectedIndex,
+          gapLocation: GapLocation.center,
+          notchSmoothness: NotchSmoothness.softEdge,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          
+          // Styling untuk efek kaca
+          backgroundColor: Colors.black.withOpacity(0.3),
+          inactiveColor: Colors.white70,
+          activeColor: Theme.of(context).colorScheme.primary,
+          blurEffect: true, // <-- Ini akan mengaktifkan efek blur bawaan
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(
-      {required IconData icon, required String label, required int index}) {
-    return IconButton(
-      icon: Icon(
-        icon,
-        color: _selectedIndex == index
-            ? Theme.of(context).primaryColor
-            : Colors.grey,
-      ),
-      onPressed: () => _onItemTapped(index),
-      tooltip: label,
-    );
+  String _getAppBarTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Pusat Komando (Hari Ini)';
+      case 1:
+        return 'Daftar Proyek';
+      case 2:
+        return 'Discover Airdrops';
+      case 3:
+        return 'Pengaturan & Manajemen';
+      default:
+        return 'Airdrop Flow';
+    }
   }
 }
