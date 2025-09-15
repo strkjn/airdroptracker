@@ -9,7 +9,6 @@ import 'package:airdrop_flow/features/settings/view/settings_page.dart';
 import 'package:airdrop_flow/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// IMPORT BARU UNTUK NAVIGASI ANIMASI
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
@@ -59,7 +58,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return AppBackground(
@@ -90,20 +89,35 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           child: const Icon(Icons.add),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        
-        // --- NAVIGASI BAWAH BARU DENGAN EFEK KACA DAN ANIMASI ---
-        bottomNavigationBar: AnimatedBottomNavigationBar(
-          icons: iconList,
-          activeIndex: _selectedIndex,
-          gapLocation: GapLocation.center,
-          notchSmoothness: NotchSmoothness.softEdge,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          
-          // Styling untuk efek kaca
-          backgroundColor: Colors.black.withOpacity(0.3),
-          inactiveColor: Colors.white70,
-          activeColor: Theme.of(context).colorScheme.primary,
-          blurEffect: true, // <-- Ini akan mengaktifkan efek blur bawaan
+        bottomNavigationBar: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20.0),
+                topRight: Radius.circular(20.0),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: Container(
+                  height: 60,
+                  // PERBAIKAN: Menghapus border dan hanya menyisakan warna
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(25),
+                  ),
+                ),
+              ),
+            ),
+            AnimatedBottomNavigationBar(
+              icons: iconList,
+              activeIndex: _selectedIndex,
+              gapLocation: GapLocation.center,
+              notchSmoothness: NotchSmoothness.softEdge,
+              onTap: (index) => setState(() => _selectedIndex = index),
+              backgroundColor: Colors.transparent,
+              inactiveColor: Colors.white70,
+              activeColor: Theme.of(context).colorScheme.primary,
+            ),
+          ],
         ),
       ),
     );

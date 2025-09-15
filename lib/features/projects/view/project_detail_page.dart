@@ -1,9 +1,11 @@
+import 'dart:ui'; // <-- Impor yang diperlukan untuk efek blur
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/models/task_template_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/projects/view/add_edit_project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,9 +69,20 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   @override
   Widget build(BuildContext context) {
     final tasksAsyncValue = ref.watch(tasksStreamProvider(widget.project.id));
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        // --- PERUBAHAN TAMPILAN APPBAR ---
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         title: Text(widget.project.name),
         actions: [
           IconButton(
@@ -94,7 +107,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
       body: tasksAsyncValue.when(
         data: (originalTasks) {
           final tasks = _processTasks(originalTasks);
-          final completedTasksOnSelectedDay = _getTasksForDay(_selectedDay!, tasks);
+          final completedTasksOnSelectedDay =
+              _getTasksForDay(_selectedDay!, tasks);
 
           return SingleChildScrollView(
             child: Column(
@@ -105,9 +119,9 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Text('Semua Tugas', style: Theme.of(context).textTheme.titleLarge),
                 ),
-                Card(
+                GlassContainer(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  clipBehavior: Clip.antiAlias,
+                  padding: EdgeInsets.zero,
                   child: tasks.isEmpty
                       ? const Padding(
                           padding: EdgeInsets.all(24.0),
@@ -125,9 +139,11 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                               direction: DismissDirection.endToStart,
                               onDismissed: (_) {
                                 ref.read(firestoreServiceProvider).deleteTask(projectId: widget.project.id, taskId: task.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Tugas "${task.name}" dihapus')),
-                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Tugas "${task.name}" dihapus')),
+                                  );
+                                }
                               },
                               background: Container(
                                 color: Colors.red.shade700,
@@ -146,9 +162,11 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   child: Text('Kalender Aktivitas', style: Theme.of(context).textTheme.titleLarge),
                 ),
                 const SizedBox(height: 8),
-                Card(
+
+                // --- KALENDER DENGAN GAYA BARU ---
+                GlassContainer(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  clipBehavior: Clip.antiAlias,
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 16), // Padding disesuaikan
                   child: TableCalendar<Task>(
                     firstDay: DateTime.utc(2022, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
@@ -168,6 +186,32 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                     onPageChanged: (focusedDay) {
                       _focusedDay = focusedDay;
                     },
+                    
+                    // --- STYLING BARU DITERAPKAN DI SINI ---
+                    headerStyle: HeaderStyle(
+                      titleCentered: true,
+                      formatButtonVisible: false,
+                      titleTextStyle: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                      leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white70),
+                      rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white70),
+                    ),
+                    daysOfWeekStyle: const DaysOfWeekStyle(
+                      weekendStyle: TextStyle(color: Colors.white70),
+                      weekdayStyle: TextStyle(color: Colors.white),
+                    ),
+                    calendarStyle: CalendarStyle(
+                      todayDecoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      outsideDaysVisible: false,
+                      defaultTextStyle: const TextStyle(color: Colors.white),
+                      weekendTextStyle: const TextStyle(color: Colors.white70),
+                    ),
                     calendarBuilders: CalendarBuilders(
                       markerBuilder: (context, date, events) {
                         if (events.isNotEmpty) {
@@ -177,7 +221,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                             child: Container(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Theme.of(context).primaryColor,
+                                color: colorScheme.secondary,
                               ),
                               width: 7,
                               height: 7,
@@ -189,6 +233,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 16),
                 if (completedTasksOnSelectedDay.isNotEmpty) ...[
                   Padding(
@@ -199,18 +244,21 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Card(
+                  GlassContainer(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
-                    clipBehavior: Clip.antiAlias,
+                    padding: EdgeInsets.zero,
                     child: Column(
-                      children: completedTasksOnSelectedDay.map((task) => ListTile(
-                            leading: const Icon(Icons.check_circle, color: Colors.green),
-                            title: Text(task.name),
-                            subtitle: Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}'),
-                          )).toList(),
+                      children: completedTasksOnSelectedDay
+                          .map((task) => ListTile(
+                                leading: const Icon(Icons.check_circle, color: Colors.green),
+                                title: Text(task.name),
+                                subtitle: Text(
+                                    'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}'),
+                              ))
+                          .toList(),
                     ),
                   ),
-                   const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                 ],
               ],
             ),
@@ -249,10 +297,12 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                       subtitle: Text('${template.tasks.length} tugas'),
                       onTap: () async {
                         await ref.read(firestoreServiceProvider).applyTemplateToProject(projectId: projectId, template: template);
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Template "${template.name}" berhasil diterapkan!'), backgroundColor: Colors.green),
-                        );
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Template "${template.name}" berhasil diterapkan!'), backgroundColor: Colors.green),
+                          );
+                        }
                       },
                     );
                   },
@@ -320,6 +370,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   }
 }
 
+// Sisa kode di bawah ini tidak berubah
+
 class _ProjectInfoSection extends ConsumerWidget {
   final Project project;
   const _ProjectInfoSection({required this.project});
@@ -327,6 +379,7 @@ class _ProjectInfoSection extends ConsumerWidget {
   Future<void> _launchURL(String urlString, BuildContext context) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Tidak bisa membuka URL: $urlString')),
       );
@@ -422,7 +475,7 @@ class _ProjectInfoSection extends ConsumerWidget {
                padding: const EdgeInsets.all(12),
                width: double.infinity,
                decoration: BoxDecoration(
-                 color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                 color: Theme.of(context).colorScheme.surfaceVariant.withAlpha(77),
                  borderRadius: BorderRadius.circular(8),
                ),
                child: Text(project.notes, style: Theme.of(context).textTheme.bodyMedium),

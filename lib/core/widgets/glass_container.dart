@@ -7,7 +7,6 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry? padding;
 
-  // Properti 'glowColor' kita hapus dari sini
   const GlassContainer({
     super.key,
     required this.child,
@@ -26,14 +25,13 @@ class GlassContainer extends StatelessWidget {
           margin: margin,
           padding: padding,
           decoration: BoxDecoration(
-            // Kita gunakan warna solid semi-transparan untuk efek kaca netral
-            color: Colors.white.withAlpha(25), // setara dengan opacity 0.1
+            color: Colors.white.withAlpha(25),
             borderRadius: BorderRadius.circular(borderRadius),
+            // --- BARIS KODE BARU DITAMBAHKAN DI SINI ---
             border: Border.all(
-              color: Colors.white.withAlpha(51), // setara dengan opacity 0.2
-              width: 1.0,
+              color: Colors.white.withAlpha(51), // Border putih lembut
+              width: 1.0, // Ketebalan border
             ),
-            // Efek boxShadow dan glowColor dihapus dari sini
           ),
           child: child,
         ),

@@ -1,6 +1,7 @@
 import 'package:airdrop_flow/core/models/airdrop_opportunity_model.dart';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/glass_container.dart'; // <-- 1. Impor GlassContainer
 import 'package:airdrop_flow/features/discover/providers/discover_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +14,9 @@ class DiscoverPage extends ConsumerWidget {
     final filteredAirdropsAsync = ref.watch(filteredAirdropsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Discover Airdrops')),
+      backgroundColor: Colors.transparent, // Latar belakang transparan
+      // Hapus AppBar agar menyatu dengan MainScaffold
+      // appBar: AppBar(title: const Text('Discover Airdrops')),
       body: Column(
         children: [
           Padding(
@@ -43,6 +46,7 @@ class DiscoverPage extends ConsumerWidget {
                   );
                 }
                 return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0), // Padding tambahan
                   itemCount: airdrops.length,
                   itemBuilder: (context, index) {
                     final airdrop = airdrops[index];
@@ -117,46 +121,45 @@ class AirdropOpportunityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(airdrop.name, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Chip(label: Text(airdrop.difficulty.name)),
-            const SizedBox(height: 8),
-            Text(
-              airdrop.description,
-              style: Theme.of(context).textTheme.bodyMedium,
+    // 2. GANTI Card MENJADI GlassContainer
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(airdrop.name, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Chip(label: Text(airdrop.difficulty.name)),
+          const SizedBox(height: 8),
+          Text(
+            airdrop.description,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Tambahkan ke Proyek Saya'),
+              onPressed: () {
+                final newProject = Project(
+                  id: '',
+                  name: airdrop.name,
+                  notes:
+                      'Peluang dari fitur Discover.\n\nDeskripsi: ${airdrop.description}\n\nSumber: ${airdrop.sourceUrl}',
+                  status: ProjectStatus.potential,
+                );
+                ref.read(firestoreServiceProvider).addProject(newProject);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('"${airdrop.name}" ditambahkan ke proyek!'),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Tambahkan ke Proyek Saya'),
-                onPressed: () {
-                  final newProject = Project(
-                    id: '',
-                    name: airdrop.name,
-                    notes:
-                        'Peluang dari fitur Discover.\n\nDeskripsi: ${airdrop.description}\n\nSumber: ${airdrop.sourceUrl}',
-                    status: ProjectStatus.potential,
-                  );
-                  ref.read(firestoreServiceProvider).addProject(newProject);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('"${airdrop.name}" ditambahkan ke proyek!'),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
