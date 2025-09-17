@@ -1,16 +1,18 @@
+// lib/features/projects/providers/project_providers.dart
+
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:timezone/timezone.dart' as tz; // Pastikan untuk mengimpor timezone
+import 'package:timezone/timezone.dart' as tz;
 
 final processedTasksProvider =
-    StreamProvider.family<List<Task>, String>((ref, projectId) {
+    Provider.family<AsyncValue<List<Task>>, String>((ref, projectId) {
       
-  // 1. Dapatkan stream tugas asli untuk proyek spesifik ini
-  final tasksStream = ref.watch(tasksStreamProvider(projectId).stream);
+  // 1. Pantau AsyncValue dari stream provider, BUKAN stream-nya langsung
+  final tasksAsync = ref.watch(tasksStreamProvider(projectId));
 
-  // 2. Gunakan .map() untuk mengubah setiap daftar tugas yang masuk dari stream
-  return tasksStream.map((tasks) {
+  // 2. Gunakan .whenData untuk memproses daftar tugas saat tersedia
+  return tasksAsync.whenData((tasks) {
     // Tentukan zona waktu lokal
     final location = tz.local;
     
