@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui'; // PERBAIKAN: dari 'dart.ui' menjadi 'dart:ui'
 import 'package:airdrop_flow/core/widgets/app_background.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:airdrop_flow/features/dashboard/view/dashboard_page.dart';
@@ -45,14 +45,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   void _scheduleDailyNotification() {
     final tasksAsync = ref.read(todaysTasksProvider);
-    
-    // --- PERBAIKAN DI BLOK INI ---
-    tasksAsync.whenData((dashboardData) {
-      // Ambil total tugas dari kedua daftar (sisa kemarin dan hari ini)
-      final int taskCount = dashboardData.overdueTasks.length + dashboardData.todaysTasks.length;
-
-      // Periksa apakah total tugas lebih dari 0
-      if (taskCount > 0) {
+    tasksAsync.whenData((tasks) {
+      if (tasks.isNotEmpty) {
+        final taskCount = tasks.length;
         notificationService.scheduleDailySummaryNotification(
           hour: 7,
           minute: 0,
@@ -62,7 +57,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         );
       }
     });
-    // --- AKHIR PERBAIKAN ---
   }
 
   @override
@@ -131,8 +125,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   String _getAppBarTitle(int index) {
     switch (index) {
       case 0:
-        // Mengubah judul AppBar agar lebih umum
-        return 'Pusat Komando';
+        return 'Pusat Komando (Hari Ini)';
       case 1:
         return 'Daftar Proyek';
       case 2:

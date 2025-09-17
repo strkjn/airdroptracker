@@ -5,7 +5,6 @@ import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -13,16 +12,15 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Kita tetap memantau todaysTasksProvider yang sudah cerdas
     final todaysTasksAsync = ref.watch(todaysTasksProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: todaysTasksAsync.when(
-        data: (dashboardData) {
-          final overdueTasks = dashboardData.overdueTasks;
-          final todaysTasks = dashboardData.todaysTasks;
-
-          if (overdueTasks.isEmpty && todaysTasks.isEmpty) {
+        // 'tasks' di sini adalah List<Task> yang sudah diproses oleh provider
+        data: (tasks) {
+          if (tasks.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
@@ -35,67 +33,39 @@ class DashboardPage extends ConsumerWidget {
             );
           }
           
-          final allTasks = [...overdueTasks, ...todaysTasks];
-          final totalTasks = allTasks.length;
-          final completedTasks = allTasks.where((task) => task.isCompleted).length;
+          final totalTasks = tasks.length;
+          final completedTasks = tasks.where((task) => task.isCompleted).length;
           final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
 
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 16.0),
+          // UI tidak perlu diubah karena logikanya sudah dipindahkan ke provider
+          return Column(
             children: [
               _ProgressCard(
                 progress: progress,
                 completedCount: completedTasks,
                 totalCount: totalTasks,
               ),
-
-              // --- BAGIAN UNTUK SISA TUGAS KEMARIN ---
-              if (overdueTasks.isNotEmpty) ...[
-                _DateHeader(
-                  title: "Sisa Tugas: ${DateFormat('EEEE, d MMMM', 'id_ID').format(dashboardData.overdueDate)}",
-                  isOverdue: true,
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return TaskCard(task: task);
+                  },
                 ),
-                ...overdueTasks.map((task) => TaskCard(task: task)).toList(),
-              ],
-
-              // --- BAGIAN UNTUK TUGAS HARI INI ---
-              if (todaysTasks.isNotEmpty) ...[
-                _DateHeader(
-                   title: "Tugas Hari Ini: ${DateFormat('EEEE, d MMMM', 'id_ID').format(dashboardData.todaysDate)}",
-                ),
-                ...todaysTasks.map((task) => TaskCard(task: task)).toList(),
-              ],
+              ),
             ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Terjadi error: $err')),
+        error: (err, stack) => Center(child: Text('Terjadi error saat memuat tugas: $err')),
       ),
     );
   }
 }
 
-// --- BARU: Widget untuk header tanggal ---
-class _DateHeader extends StatelessWidget {
-  const _DateHeader({required this.title, this.isOverdue = false});
-  final String title;
-  final bool isOverdue;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: isOverdue ? Colors.orangeAccent : Colors.white70,
-              fontWeight: FontWeight.bold,
-            ),
-      ),
-    );
-  }
-}
-
+// Widget _ProgressCard tidak perlu diubah
 class _ProgressCard extends StatelessWidget {
   const _ProgressCard({
     required this.progress,
@@ -116,7 +86,7 @@ class _ProgressCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Progres Keseluruhan',
+            'Progres Hari Ini',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -152,11 +122,13 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
+// Provider ini tetap diperlukan untuk mengambil detail proyek di TaskCard
 final projectProvider = FutureProvider.family<Project?, String>((ref, projectId) async {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return await firestoreService.getProjectById(projectId);
 });
 
+// Widget TaskCard tidak perlu diubah
 class TaskCard extends ConsumerWidget {
   const TaskCard({super.key, required this.task});
   final Task task;
@@ -197,13 +169,15 @@ class TaskCard extends ConsumerWidget {
           Checkbox(
             value: task.isCompleted,
             onChanged: (newValue) {
-              ref
-                  .read(firestoreServiceProvider)
-                  .updateTaskStatus(
-                    projectId: task.projectId,
-                    taskId: task.id,
-                    isCompleted: newValue!,
-                  );
+              if (newValue != null) {
+                ref
+                    .read(firestoreServiceProvider)
+                    .updateTaskStatus(
+                      projectId: task.projectId,
+                      taskId: task.id,
+                      isCompleted: newValue,
+                    );
+              }
             },
           ),
           Expanded(

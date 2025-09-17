@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui'; // PERBAIKAN: dari 'dart.ui' menjadi 'dart:ui'
 import 'package:flutter/material.dart';
 
 class GlassContainer extends StatelessWidget {
@@ -27,10 +27,9 @@ class GlassContainer extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withAlpha(25),
             borderRadius: BorderRadius.circular(borderRadius),
-            // --- BARIS KODE BARU DITAMBAHKAN DI SINI ---
             border: Border.all(
-              color: Colors.white.withAlpha(51), // Border putih lembut
-              width: 1.0, // Ketebalan border
+              color: Colors.white.withAlpha(51),
+              width: 1.0,
             ),
           ),
           child: child,
