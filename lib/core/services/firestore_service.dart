@@ -165,3 +165,14 @@ class FirestoreService {
     await writeBatch.commit();
   }
 }
+
+Stream<Project> getProjectStream(String projectId) {
+  if (_userId == null) return Stream.error("User not logged in!");
+  final docRef = _userCollection('projects').doc(projectId);
+  return docRef.snapshots().map((doc) {
+    if (!doc.exists) {
+      throw Exception('Proyek tidak ditemukan');
+    }
+    return Project.fromFirestore(doc);
+  });
+}

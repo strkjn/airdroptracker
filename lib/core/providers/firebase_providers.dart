@@ -10,10 +10,7 @@ import 'package:airdrop_flow/core/services/firestore_service.dart';
 import 'package:airdrop_flow/core/services/security_service.dart'; // <-- Import baru
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ======================================================================
-// SERVICE PROVIDERS
-// Provider ini bertanggung jawab untuk menyediakan instance dari class service.
-// ======================================================================
+
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
@@ -63,4 +60,10 @@ final socialAccountsStreamProvider = StreamProvider<List<SocialAccount>>((ref) {
 final taskTemplatesStreamProvider = StreamProvider<List<TaskTemplate>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return firestoreService.getTaskTemplates();
+});
+
+final singleProjectStreamProvider =
+    StreamProvider.family<Project, String>((ref, projectId) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getProjectStream(projectId);
 });

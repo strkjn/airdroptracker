@@ -72,8 +72,9 @@ class ProjectCard extends ConsumerWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ProjectDetailPage(project: project)),
+          MaterialPageRoute(builder: (context) => ProjectDetailPage(projectId: project.id),
         ),
+     ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

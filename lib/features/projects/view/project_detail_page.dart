@@ -1,8 +1,7 @@
 // lib/features/projects/view/project_detail_page.dart
-
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui'; // PERBAIKAN: dari 'dart.ui' menjadi 'dart:ui'
+import 'dart:ui';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
@@ -15,9 +14,10 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// Constructor diubah untuk menerima projectId
 class ProjectDetailPage extends ConsumerStatefulWidget {
-  final Project project;
-  const ProjectDetailPage({super.key, required this.project});
+  final String projectId;
+  const ProjectDetailPage({super.key, required this.projectId});
 
   @override
   ConsumerState<ProjectDetailPage> createState() => _ProjectDetailPageState();
@@ -40,310 +40,400 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     }).toList();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // PERBAIKAN: Provider ini sekarang mengembalikan AsyncValue<List<Task>>
-    final tasksAsyncValue = ref.watch(processedTasksProvider(widget.project.id));
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        title: Text(widget.project.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddEditProjectPage(project: widget.project),
-                ),
-              );
-            },
-            tooltip: 'Edit Proyek',
-          ),
-          IconButton(
-            icon: const Icon(Icons.library_add_check_outlined),
-            onPressed: () => _showApplyTemplateDialog(context, ref, widget.project.id),
-            tooltip: 'Terapkan Template',
-          ),
-        ],
-      ),
-      body: tasksAsyncValue.when(
-        data: (tasks) {
-          final selectedDay = _selectedDay;
-          final completedTasksOnSelectedDay =
-              selectedDay != null ? _getTasksForDay(selectedDay, tasks) : <Task>[];
-
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ProjectInfoSection(project: widget.project),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: Text('Semua Tugas', style: Theme.of(context).textTheme.titleLarge),
-                ),
-                GlassContainer(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: EdgeInsets.zero,
-                  child: tasks.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(24.0),
-                          child: Center(child: Text('Belum ada tugas di proyek ini.')),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: EdgeInsets.zero,
-                          itemCount: tasks.length,
-                          itemBuilder: (context, index) {
-                            final task = tasks[index];
-                            return Dismissible(
-                              key: Key(task.id),
-                              direction: DismissDirection.endToStart,
-                              onDismissed: (_) {
-                                ref.read(firestoreServiceProvider).deleteTask(projectId: widget.project.id, taskId: task.id);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Tugas "${task.name}" dihapus')),
-                                  );
-                                }
-                              },
-                              background: Container(
-                                color: Colors.red.shade700,
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20.0),
-                                child: const Icon(Icons.delete_sweep, color: Colors.white),
-                              ),
-                              child: TaskTile(task: task),
-                            );
-                          },
-                        ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text('Kalender Aktivitas', style: Theme.of(context).textTheme.titleLarge),
-                ),
-                const SizedBox(height: 8),
-
-                GlassContainer(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: TableCalendar<Task>(
-                    calendarFormat: CalendarFormat.week,
-                    firstDay: DateTime.utc(2022, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    startingDayOfWeek: StartingDayOfWeek.monday,
-                    eventLoader: (day) => _getTasksForDay(day, tasks),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      if (!isSameDay(_selectedDay, selectedDay)) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      }
-                    },
-                    onPageChanged: (focusedDay) {
-                      _focusedDay = focusedDay;
-                    },
-                    headerStyle: const HeaderStyle(
-                      titleCentered: true,
-                      formatButtonVisible: false,
-                      titleTextStyle: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-                      leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white70),
-                      rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white70),
-                    ),
-                    daysOfWeekStyle: const DaysOfWeekStyle(
-                      weekendStyle: TextStyle(color: Colors.white70),
-                      weekdayStyle: TextStyle(color: Colors.white),
-                    ),
-                    calendarStyle: CalendarStyle(
-                      selectedDecoration: BoxDecoration(
-                        color: const Color(0xFF50C878),
-                        shape: BoxShape.circle,
-                      ),
-                      selectedTextStyle: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      todayDecoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      todayTextStyle: const TextStyle(color: Colors.white),
-                      defaultTextStyle: const TextStyle(color: Colors.white),
-                      weekendTextStyle: const TextStyle(color: Colors.white70),
-                      outsideDaysVisible: false,
-                    ),
-                    calendarBuilders: CalendarBuilders(
-                      markerBuilder: (context, date, events) {
-                        if (events.isNotEmpty) {
-                          return Positioned(
-                            right: 4,
-                            top: 4,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colorScheme.secondary.withOpacity(0.8),
-                              ),
-                              width: 7,
-                              height: 7,
-                            ),
-                          );
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                if (selectedDay != null && completedTasksOnSelectedDay.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text(
-                      'Aktivitas pada ${DateFormat.yMMMMd().format(selectedDay)}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GlassContainer(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: completedTasksOnSelectedDay
-                          .map((task) => ListTile(
-                                leading: const Icon(Icons.check_circle, color: Colors.green),
-                                title: Text(task.name),
-                                subtitle: task.lastCompletedTimestamp != null
-                                    ? Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
-                                    : null,
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Gagal memuat tugas: $err')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddTaskDialog(context, ref, widget.project.id),
-        tooltip: 'Tambah Tugas Manual',
-        child: const Icon(Icons.add_task),
-      ),
-    );
-  }
-
-  void _showApplyTemplateDialog(BuildContext context, WidgetRef ref, String projectId) {
-    final templatesAsync = ref.watch(taskTemplatesStreamProvider);
+  void _confirmDeleteProject(BuildContext context, WidgetRef ref, Project project) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Terapkan Template Tugas'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: templatesAsync.when(
-              data: (templates) {
-                if (templates.isEmpty) return const Text('Anda belum memiliki template.');
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: templates.length,
-                  itemBuilder: (context, index) {
-                    final template = templates[index];
-                    return ListTile(
-                      title: Text(template.name),
-                      subtitle: Text('${template.tasks.length} tugas'),
-                      onTap: () async {
-                        await ref.read(firestoreServiceProvider).applyTemplateToProject(projectId: projectId, template: template);
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Template "${template.name}" berhasil diterapkan!'), backgroundColor: Colors.green),
-                          );
-                        }
-                      },
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, s) => const Text('Gagal memuat template.'),
+          title: const Text('Konfirmasi Hapus'),
+          content: Text(
+              'Apakah Anda yakin ingin menghapus proyek "${project.name}"? Semua tugas di dalamnya juga akan terhapus.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-          ),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal'))],
+            TextButton(
+              child:
+                  Text('Hapus', style: TextStyle(color: Colors.red.shade400)),
+              onPressed: () async {
+                await ref.read(firestoreServiceProvider).deleteProject(project.id);
+                if (context.mounted) {
+                  // Kembali ke halaman paling awal (root) setelah hapus
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Proyek "${project.name}" berhasil dihapus.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
         );
       },
     );
   }
 
-  void _showAddTaskDialog(BuildContext context, WidgetRef ref, String projectId) {
+  void _showApplyTemplateDialog(
+      BuildContext context, WidgetRef ref, String projectId) {
+    // Implementasi dialog template... (tidak ada perubahan)
+    final templatesAsync = ref.watch(taskTemplatesStreamProvider);
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Terapkan Template Tugas'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: templatesAsync.when(
+                data: (templates) {
+                  if (templates.isEmpty)
+                    return const Text('Anda belum memiliki template.');
+                  return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: templates.length,
+                      itemBuilder: (context, index) {
+                        final template = templates[index];
+                        return ListTile(
+                            title: Text(template.name),
+                            subtitle: Text('${template.tasks.length} tugas'),
+                            onTap: () async {
+                              await ref
+                                  .read(firestoreServiceProvider)
+                                  .applyTemplateToProject(
+                                      projectId: projectId,
+                                      template: template);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          'Template "${template.name}" berhasil diterapkan!'),
+                                      backgroundColor: Colors.green),
+                                );
+                              }
+                            });
+                      });
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, s) => const Text('Gagal memuat template.'),
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Batal'))
+            ],
+          );
+        });
+  }
+
+  void _showAddTaskDialog(
+      BuildContext context, WidgetRef ref, String projectId) {
+    // Implementasi dialog tambah tugas... (tidak ada perubahan)
     final nameController = TextEditingController();
     TaskCategory selectedCategory = TaskCategory.OneTime;
     showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Tambah Tugas Baru'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Tugas')),
+                title: const Text('Tambah Tugas Baru'),
+                content: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TextField(
+                      controller: nameController,
+                      decoration:
+                          const InputDecoration(labelText: 'Nama Tugas')),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<TaskCategory>(
-                    value: selectedCategory,
-                    isExpanded: true,
-                    items: TaskCategory.values.map((TaskCategory category) {
-                      return DropdownMenuItem<TaskCategory>(value: category, child: Text(category.name));
-                    }).toList(),
-                    onChanged: (newValue) {
-                      if (newValue != null) setState(() => selectedCategory = newValue);
-                    },
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                  ),
-                ],
+                      value: selectedCategory,
+                      isExpanded: true,
+                      items: TaskCategory.values.map((TaskCategory category) {
+                        return DropdownMenuItem<TaskCategory>(
+                            value: category, child: Text(category.name));
+                      }).toList(),
+                      onChanged: (newValue) {
+                        if (newValue != null)
+                          setState(() => selectedCategory = newValue);
+                      },
+                      decoration:
+                          const InputDecoration(labelText: 'Kategori'))
+                ]),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Batal')),
+                  ElevatedButton(
+                      onPressed: () {
+                        if (nameController.text.isNotEmpty) {
+                          ref.read(firestoreServiceProvider).addTaskToProject(
+                                projectId: projectId,
+                                taskName: nameController.text.trim(),
+                                category: selectedCategory,
+                              );
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: const Text('Simpan'))
+                ]);
+          });
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Dengerin data proyek secara real-time pake projectId
+    final projectAsync = ref.watch(singleProjectStreamProvider(widget.projectId));
+
+    // 2. Bungkus semua tampilan pake .when()
+    return projectAsync.when(
+      data: (project) {
+        // 3. Dapet data 'project' yang fresh, baru panggil provider tugas
+        final tasksAsyncValue = ref.watch(processedTasksProvider(project.id));
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(color: Colors.transparent),
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
-                ElevatedButton(
-                  onPressed: () {
-                    if (nameController.text.isNotEmpty) {
-                      ref.read(firestoreServiceProvider).addTaskToProject(
-                            projectId: projectId,
-                            taskName: nameController.text.trim(),
-                            category: selectedCategory,
-                          );
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('Simpan'),
+            ),
+            title: Text(project.name), // Pake data 'project' yang baru
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddEditProjectPage(project: project),
+                    ),
+                  );
+                },
+                tooltip: 'Edit Proyek',
+              ),
+              IconButton(
+                icon: const Icon(Icons.library_add_check_outlined),
+                onPressed: () =>
+                    _showApplyTemplateDialog(context, ref, project.id),
+                tooltip: 'Terapkan Template',
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                onPressed: () => _confirmDeleteProject(context, ref, project),
+                tooltip: 'Hapus Proyek',
+              ),
+            ],
+          ),
+          body: tasksAsyncValue.when(
+            data: (tasks) {
+              final selectedDay = _selectedDay;
+              final completedTasksOnSelectedDay = selectedDay != null
+                  ? _getTasksForDay(selectedDay, tasks)
+                  : <Task>[];
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ProjectInfoSection(project: project), // Kirim data 'project' yang baru
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Text('Semua Tugas',
+                          style: Theme.of(context).textTheme.titleLarge),
+                    ),
+                    GlassContainer(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.zero,
+                      child: tasks.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(24.0),
+                              child: Center(
+                                  child:
+                                      Text('Belum ada tugas di proyek ini.')),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding: EdgeInsets.zero,
+                              itemCount: tasks.length,
+                              itemBuilder: (context, index) {
+                                final task = tasks[index];
+                                return Dismissible(
+                                  key: Key(task.id),
+                                  direction: DismissDirection.endToStart,
+                                  onDismissed: (_) {
+                                    ref
+                                        .read(firestoreServiceProvider)
+                                        .deleteTask(
+                                            projectId: project.id,
+                                            taskId: task.id);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Tugas "${task.name}" dihapus')),
+                                      );
+                                    }
+                                  },
+                                  background: Container(
+                                    color: Colors.red.shade700,
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20.0),
+                                    child: const Icon(Icons.delete_sweep,
+                                        color: Colors.white),
+                                  ),
+                                  child: TaskTile(task: task),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Text('Kalender Aktivitas',
+                          style: Theme.of(context).textTheme.titleLarge),
+                    ),
+                    const SizedBox(height: 8),
+                    GlassContainer(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: TableCalendar<Task>(
+                        // ... sisa kode TableCalendar tidak berubah
+                         calendarFormat: CalendarFormat.week,
+                        firstDay: DateTime.utc(2022, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: _focusedDay,
+                        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                        startingDayOfWeek: StartingDayOfWeek.monday,
+                        eventLoader: (day) => _getTasksForDay(day, tasks),
+                        onDaySelected: (selectedDay, focusedDay) {
+                          if (!isSameDay(_selectedDay, selectedDay)) {
+                            setState(() {
+                              _selectedDay = selectedDay;
+                              _focusedDay = focusedDay;
+                            });
+                          }
+                        },
+                        onPageChanged: (focusedDay) {
+                          _focusedDay = focusedDay;
+                        },
+                        headerStyle: const HeaderStyle(
+                          titleCentered: true,
+                          formatButtonVisible: false,
+                          titleTextStyle: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                          leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white70),
+                          rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white70),
+                        ),
+                        daysOfWeekStyle: const DaysOfWeekStyle(
+                          weekendStyle: TextStyle(color: Colors.white70),
+                          weekdayStyle: TextStyle(color: Colors.white),
+                        ),
+                        calendarStyle: CalendarStyle(
+                          selectedDecoration: BoxDecoration(
+                            color: const Color(0xFF50C878),
+                            shape: BoxShape.circle,
+                          ),
+                          selectedTextStyle: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          todayDecoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          todayTextStyle: const TextStyle(color: Colors.white),
+                          defaultTextStyle: const TextStyle(color: Colors.white),
+                          weekendTextStyle: const TextStyle(color: Colors.white70),
+                          outsideDaysVisible: false,
+                        ),
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, date, events) {
+                            if (events.isNotEmpty) {
+                              return Positioned(
+                                right: 4,
+                                top: 4,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colorScheme.secondary.withOpacity(0.8),
+                                  ),
+                                  width: 7,
+                                  height: 7,
+                                ),
+                              );
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (selectedDay != null &&
+                        completedTasksOnSelectedDay.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(
+                          'Aktivitas pada ${DateFormat.yMMMMd().format(selectedDay)}',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GlassContainer(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: completedTasksOnSelectedDay
+                              .map((task) => ListTile(
+                                    leading: const Icon(Icons.check_circle,
+                                        color: Colors.green),
+                                    title: Text(task.name),
+                                    subtitle: task.lastCompletedTimestamp !=
+                                            null
+                                        ? Text(
+                                            'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
+                                        : null,
+                                  ))
+                              .toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
                 ),
-              ],
-            );
-          },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) =>
+                Center(child: Text('Gagal memuat tugas: $err')),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showAddTaskDialog(context, ref, project.id),
+            tooltip: 'Tambah Tugas Manual',
+            child: const Icon(Icons.add_task),
+          ),
         );
       },
+      loading: () => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(backgroundColor: Colors.transparent),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, stack) => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar:
+            AppBar(backgroundColor: Colors.transparent, title: const Text('Error')),
+        body: Center(child: Text('Gagal memuat proyek: $err')),
+      ),
     );
   }
 }
@@ -361,7 +451,7 @@ class _ProjectInfoSection extends ConsumerWidget {
       );
     }
   }
-  
+
   String _shortenAddress(String address) {
     if (address.length < 12) return address;
     return '${address.substring(0, 6)}...${address.substring(address.length - 5)}';
@@ -395,8 +485,14 @@ class _ProjectInfoSection extends ConsumerWidget {
                         onTap: () => _launchURL(project.websiteUrl, context),
                       ),
                     if (project.blockchainNetwork.isNotEmpty)
-                      _DetailRow(icon: Icons.lan_outlined, label: 'Jaringan', value: project.blockchainNetwork),
-                    _DetailRow(icon: Icons.flag_outlined, label: 'Status', value: project.status.name),
+                      _DetailRow(
+                          icon: Icons.lan_outlined,
+                          label: 'Jaringan',
+                          value: project.blockchainNetwork),
+                    _DetailRow(
+                        icon: Icons.flag_outlined,
+                        label: 'Status',
+                        value: project.status.name),
                   ],
                 ),
               ),
@@ -405,37 +501,114 @@ class _ProjectInfoSection extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _DetailRow(icon: Icons.account_balance_wallet_outlined, label: 'Wallet', value: ''),
                     allWalletsAsync.when(
                       data: (wallets) {
-                        final usedWallets = wallets.where((w) => project.associatedWalletIds.contains(w.id)).toList();
-                        if (usedWallets.isEmpty) return const Padding(padding: EdgeInsets.only(left: 30, top: 4), child: Text('Tidak ada'));
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 30),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: usedWallets.map((w) => Text('${w.walletName} (${_shortenAddress(w.publicAddress)})', style: Theme.of(context).textTheme.bodyMedium)).toList(),
-                          ),
+                        final usedWallets = wallets
+                            .where((w) =>
+                                project.associatedWalletIds.contains(w.id))
+                            .toList();
+                        final formattedValues = usedWallets
+                            .map((w) =>
+                                '${w.walletName} (${_shortenAddress(w.publicAddress)})')
+                            .toList();
+
+                        if (formattedValues.length <= 1) {
+                          return _DetailRow(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: 'Wallet',
+                            value: formattedValues.isEmpty
+                                ? 'Tidak ada'
+                                : formattedValues.first,
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _DetailRow(
+                                icon: Icons.account_balance_wallet_outlined,
+                                label: 'Wallet',
+                                value: ''),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 30, top: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: formattedValues
+                                    .map((value) => Text(value,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium))
+                                    .toList(),
+                              ),
+                            ),
+                          ],
                         );
                       },
-                      loading: () => const Padding(padding: EdgeInsets.only(left: 30, top: 4), child: Text('Memuat...')),
+                      loading: () => const _DetailRow(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'Wallet',
+                          value: 'Memuat...'),
                       error: (e, s) => const SizedBox.shrink(),
                     ),
-                    const SizedBox(height: 12),
-                    _DetailRow(icon: Icons.group_outlined, label: 'Akun', value: ''),
                     allSocialsAsync.when(
                       data: (socials) {
-                        final usedSocials = socials.where((s) => project.associatedSocialAccountIds.contains(s.id)).toList();
-                         if (usedSocials.isEmpty) return const Padding(padding: EdgeInsets.only(left: 30, top: 4), child: Text('Tidak ada'));
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 30),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: usedSocials.map((s) => Text('${s.username} (${s.platform.name})', style: Theme.of(context).textTheme.bodyMedium)).toList(),
-                          ),
+                        final usedSocials = socials
+                            .where((s) =>
+                                project.associatedSocialAccountIds.contains(s.id))
+                            .toList();
+                        final formattedValues = usedSocials
+                            .map((s) => '${s.username} (${s.platform.name})')
+                            .toList();
+
+                        // Logika "Pintar" untuk Jarak
+                        // Tambah SizedBox hanya jika ada wallet DAN akun
+                        final walletsExist = project.associatedWalletIds.isNotEmpty;
+                        final socialsExist = formattedValues.isNotEmpty;
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (walletsExist && socialsExist) const SizedBox(height: 12),
+                            if (formattedValues.length <= 1)
+                              _DetailRow(
+                                icon: Icons.group_outlined,
+                                label: 'Akun',
+                                value: formattedValues.isEmpty
+                                    ? 'Tidak ada'
+                                    : formattedValues.first,
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _DetailRow(
+                                      icon: Icons.group_outlined,
+                                      label: 'Akun',
+                                      value: ''),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 30, top: 4),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: formattedValues
+                                          .map((value) => Text(value,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium))
+                                          .toList(),
+                                    ),
+                                  ),
+                                ],
+                              )
+                          ],
                         );
                       },
-                      loading: () => const Padding(padding: EdgeInsets.only(left: 30, top: 4), child: Text('Memuat...')),
+                      loading: () => const _DetailRow(
+                          icon: Icons.group_outlined,
+                          label: 'Akun',
+                          value: 'Memuat...'),
                       error: (e, s) => const SizedBox.shrink(),
                     ),
                   ],
@@ -443,20 +616,25 @@ class _ProjectInfoSection extends ConsumerWidget {
               ),
             ],
           ),
-           if (project.notes.isNotEmpty) ...[
-             const Divider(height: 24),
-             Text('Catatan & Strategi', style: Theme.of(context).textTheme.titleMedium),
-             const SizedBox(height: 8),
-             Container(
-               padding: const EdgeInsets.all(12),
-               width: double.infinity,
-               decoration: BoxDecoration(
-                 color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(77),
-                 shape: BoxShape.circle,
-               ),
-               child: Text(project.notes, style: Theme.of(context).textTheme.bodyMedium),
-             ),
-           ]
+          if (project.notes.isNotEmpty) ...[
+            const Divider(height: 24),
+            Text('Catatan & Strategi',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(project.notes,
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          ]
         ],
       ),
     );
