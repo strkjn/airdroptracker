@@ -79,9 +79,12 @@ class _AddEditTemplatePageState extends ConsumerState<AddEditTemplatePage> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<TaskCategory>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     items: TaskCategory.values.map((cat) {
-                      return DropdownMenuItem(value: cat, child: Text(cat.name));
+                      return DropdownMenuItem(
+                         value: cat,
+                         child: Text(cat.name),
+                         );
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {

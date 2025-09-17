@@ -24,8 +24,7 @@ class SecurityService {
           // biometricOnly: true, // <-- BARIS INI DIHAPUS/DIKOMENTARI
         ),
       );
-    } on PlatformException catch (e) {
-      print('Error otentikasi: $e');
+    } on PlatformException {
       return false;
     }
   }

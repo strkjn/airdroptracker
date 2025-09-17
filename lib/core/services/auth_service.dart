@@ -12,9 +12,8 @@ class AuthService {
       final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
       return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      print('Error saat registrasi: ${e.message}');
-      throw e;
+    } on FirebaseAuthException {
+      rethrow;
     }
   }
 
@@ -26,9 +25,8 @@ class AuthService {
       final UserCredential userCredential = await _auth
           .signInWithEmailAndPassword(email: email, password: password);
       return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      print('Error saat login: ${e.message}');
-      throw e;
+    } on FirebaseAuthException {
+      rethrow;
     }
   }
 

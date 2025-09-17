@@ -51,18 +51,18 @@ class SocialManagementPage extends ConsumerWidget {
 
   IconData _getPlatformIcon(SocialPlatform platform) {
     switch (platform) {
-      case SocialPlatform.Twitter:
+      case SocialPlatform.twitter:
         return Icons.flutter_dash;
-      case SocialPlatform.Discord:
+      case SocialPlatform.discord:
         return Icons.discord;
-      case SocialPlatform.Telegram:
+      case SocialPlatform.telegram:
         return Icons.send;
     }
   }
 
   void _showAddSocialDialog(BuildContext context, WidgetRef ref) {
     final usernameController = TextEditingController();
-    SocialPlatform selectedPlatform = SocialPlatform.Twitter;
+    SocialPlatform selectedPlatform = SocialPlatform.twitter;
 
     showDialog(
       context: context,

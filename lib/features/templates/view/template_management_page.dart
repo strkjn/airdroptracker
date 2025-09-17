@@ -66,8 +66,8 @@ class TemplateManagementPage extends ConsumerWidget {
             ),
           );
         },
-        child: const Icon(Icons.add),
         tooltip: 'Buat Template Baru',
+        child: const Icon(Icons.add),
       ),
     );
   }

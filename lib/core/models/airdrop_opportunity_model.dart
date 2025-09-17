@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// ignore: constant_identifier_names
 enum AirdropDifficulty { Easy, Medium, Hard }
 
 class AirdropOpportunity {

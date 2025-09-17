@@ -111,7 +111,7 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<ProjectStatus>(
-                value: _selectedStatus,
+                initialValue: _selectedStatus,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: ProjectStatus.values.map((status) {
                   return DropdownMenuItem(value: status, child: Text(status.name));

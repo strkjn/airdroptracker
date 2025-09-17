@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum SocialPlatform { Twitter, Discord, Telegram }
+enum SocialPlatform { twitter, discord, telegram }
 
 class SocialAccount {
   final String id;
@@ -21,7 +21,7 @@ class SocialAccount {
       id: snapshot.id,
       platform: SocialPlatform.values.firstWhere(
         (e) => e.name == data['platform'],
-        orElse: () => SocialPlatform.Twitter,
+        orElse: () => SocialPlatform.twitter,
       ),
       username: data['username'] ?? '',
     );

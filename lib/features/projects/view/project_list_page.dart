@@ -53,6 +53,7 @@ class ProjectCard extends ConsumerWidget {
   Future<void> _launchURL(String urlString, BuildContext context) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Tidak bisa membuka URL: $urlString')),
       );

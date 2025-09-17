@@ -1,9 +1,10 @@
 // lib/features/projects/view/project_detail_page.dart
 
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui'; // PERBAIKAN: dari 'dart.ui' menjadi 'dart:ui'
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
-import 'package:airdrop_flow/core/models/task_template_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/projects/providers/project_providers.dart';
@@ -246,8 +247,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddTaskDialog(context, ref, widget.project.id),
-        child: const Icon(Icons.add_task),
         tooltip: 'Tambah Tugas Manual',
+        child: const Icon(Icons.add_task),
       ),
     );
   }
@@ -450,7 +451,7 @@ class _ProjectInfoSection extends ConsumerWidget {
                padding: const EdgeInsets.all(12),
                width: double.infinity,
                decoration: BoxDecoration(
-                 color: Theme.of(context).colorScheme.surfaceVariant.withAlpha(77),
+                 color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(77),
                  shape: BoxShape.circle,
                ),
                child: Text(project.notes, style: Theme.of(context).textTheme.bodyMedium),
