@@ -59,16 +59,6 @@ class ProjectCard extends ConsumerWidget {
     }
   }
   
-  Color _getStatusGlowColor(ProjectStatus status) {
-    switch (status) {
-      case ProjectStatus.active:
-        return Colors.greenAccent;
-      case ProjectStatus.completed:
-        return Colors.blueAccent;
-      case ProjectStatus.potential:
-        return Colors.orangeAccent;
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
