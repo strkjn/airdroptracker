@@ -70,11 +70,12 @@ class ProjectCard extends ConsumerWidget {
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ProjectDetailPage(projectId: project.id),
-        ),
-     ),
+onTap: () => Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => ProjectDetailPage(projectId: project.id),
+  ),
+),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

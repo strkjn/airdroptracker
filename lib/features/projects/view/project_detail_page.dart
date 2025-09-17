@@ -14,7 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Constructor diubah untuk menerima projectId
+// 1. Ubah constructor untuk menerima projectId
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final String projectId;
   const ProjectDetailPage({super.key, required this.projectId});
@@ -40,31 +40,30 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     }).toList();
   }
 
+  // Fungsi untuk konfirmasi hapus
   void _confirmDeleteProject(BuildContext context, WidgetRef ref, Project project) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Konfirmasi Hapus'),
-          content: Text(
-              'Apakah Anda yakin ingin menghapus proyek "${project.name}"? Semua tugas di dalamnya juga akan terhapus.'),
+          content: Text('Apakah Anda yakin ingin menghapus proyek "${project.name}"? Semua tugas di dalamnya juga akan terhapus.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
             ),
             TextButton(
-              child:
-                  Text('Hapus', style: TextStyle(color: Colors.red.shade400)),
+              child: Text('Hapus', style: TextStyle(color: Colors.red.shade400)),
               onPressed: () async {
                 await ref.read(firestoreServiceProvider).deleteProject(project.id);
                 if (context.mounted) {
-                  // Kembali ke halaman paling awal (root) setelah hapus
                   Navigator.of(context).popUntil((route) => route.isFirst);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content:
-                          Text('Proyek "${project.name}" berhasil dihapus.'),
+                      content: Text('Proyek "${project.name}" berhasil dihapus.'),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -77,121 +76,110 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     );
   }
 
-  void _showApplyTemplateDialog(
-      BuildContext context, WidgetRef ref, String projectId) {
-    // Implementasi dialog template... (tidak ada perubahan)
+  // Fungsi untuk menerapkan template
+  void _showApplyTemplateDialog(BuildContext context, WidgetRef ref, String projectId) {
     final templatesAsync = ref.watch(taskTemplatesStreamProvider);
     showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Terapkan Template Tugas'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: templatesAsync.when(
-                data: (templates) {
-                  if (templates.isEmpty)
-                    return const Text('Anda belum memiliki template.');
-                  return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: templates.length,
-                      itemBuilder: (context, index) {
-                        final template = templates[index];
-                        return ListTile(
-                            title: Text(template.name),
-                            subtitle: Text('${template.tasks.length} tugas'),
-                            onTap: () async {
-                              await ref
-                                  .read(firestoreServiceProvider)
-                                  .applyTemplateToProject(
-                                      projectId: projectId,
-                                      template: template);
-                              if (context.mounted) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          'Template "${template.name}" berhasil diterapkan!'),
-                                      backgroundColor: Colors.green),
-                                );
-                              }
-                            });
-                      });
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, s) => const Text('Gagal memuat template.'),
-              ),
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Terapkan Template Tugas'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: templatesAsync.when(
+              data: (templates) {
+                if (templates.isEmpty) return const Text('Anda belum memiliki template.');
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: templates.length,
+                  itemBuilder: (context, index) {
+                    final template = templates[index];
+                    return ListTile(
+                      title: Text(template.name),
+                      subtitle: Text('${template.tasks.length} tugas'),
+                      onTap: () async {
+                        await ref.read(firestoreServiceProvider).applyTemplateToProject(projectId: projectId, template: template);
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Template "${template.name}" berhasil diterapkan!'), backgroundColor: Colors.green),
+                          );
+                        }
+                      },
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, s) => const Text('Gagal memuat template.'),
             ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Batal'))
-            ],
-          );
-        });
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal'))],
+        );
+      },
+    );
   }
 
-  void _showAddTaskDialog(
-      BuildContext context, WidgetRef ref, String projectId) {
-    // Implementasi dialog tambah tugas... (tidak ada perubahan)
+  // Fungsi untuk menambah tugas
+  void _showAddTaskDialog(BuildContext context, WidgetRef ref, String projectId) {
     final nameController = TextEditingController();
     TaskCategory selectedCategory = TaskCategory.OneTime;
     showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(builder: (context, setState) {
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
             return AlertDialog(
-                title: const Text('Tambah Tugas Baru'),
-                content: Column(mainAxisSize: MainAxisSize.min, children: [
-                  TextField(
-                      controller: nameController,
-                      decoration:
-                          const InputDecoration(labelText: 'Nama Tugas')),
+              title: const Text('Tambah Tugas Baru'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Tugas')),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<TaskCategory>(
-                      value: selectedCategory,
-                      isExpanded: true,
-                      items: TaskCategory.values.map((TaskCategory category) {
-                        return DropdownMenuItem<TaskCategory>(
-                            value: category, child: Text(category.name));
-                      }).toList(),
-                      onChanged: (newValue) {
-                        if (newValue != null)
-                          setState(() => selectedCategory = newValue);
-                      },
-                      decoration:
-                          const InputDecoration(labelText: 'Kategori'))
-                ]),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Batal')),
-                  ElevatedButton(
-                      onPressed: () {
-                        if (nameController.text.isNotEmpty) {
-                          ref.read(firestoreServiceProvider).addTaskToProject(
-                                projectId: projectId,
-                                taskName: nameController.text.trim(),
-                                category: selectedCategory,
-                              );
-                          Navigator.of(context).pop();
-                        }
-                      },
-                      child: const Text('Simpan'))
-                ]);
-          });
-        });
+                    value: selectedCategory,
+                    isExpanded: true,
+                    items: TaskCategory.values.map((TaskCategory category) {
+                      return DropdownMenuItem<TaskCategory>(value: category, child: Text(category.name));
+                    }).toList(),
+                    onChanged: (newValue) {
+                      if (newValue != null) setState(() => selectedCategory = newValue);
+                    },
+                    decoration: const InputDecoration(labelText: 'Kategori'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (nameController.text.isNotEmpty) {
+                      ref.read(firestoreServiceProvider).addTaskToProject(
+                            projectId: projectId,
+                            taskName: nameController.text.trim(),
+                            category: selectedCategory,
+                          );
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
-    // 1. Dengerin data proyek secara real-time pake projectId
+    // 2. Pantau data proyek menggunakan provider baru
     final projectAsync = ref.watch(singleProjectStreamProvider(widget.projectId));
-
-    // 2. Bungkus semua tampilan pake .when()
+    
     return projectAsync.when(
-      data: (project) {
-        // 3. Dapet data 'project' yang fresh, baru panggil provider tugas
+      data: (project) { // 3. Gunakan object 'project' yang fresh dari provider
         final tasksAsyncValue = ref.watch(processedTasksProvider(project.id));
         final colorScheme = Theme.of(context).colorScheme;
 
@@ -206,7 +194,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 child: Container(color: Colors.transparent),
               ),
             ),
-            title: Text(project.name), // Pake data 'project' yang baru
+            title: Text(project.name), // Menggunakan data fresh
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
@@ -214,7 +202,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AddEditProjectPage(project: project),
+                      builder: (context) => AddEditProjectPage(project: project), // Kirim data fresh
                     ),
                   );
                 },
@@ -222,13 +210,12 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               ),
               IconButton(
                 icon: const Icon(Icons.library_add_check_outlined),
-                onPressed: () =>
-                    _showApplyTemplateDialog(context, ref, project.id),
+                onPressed: () => _showApplyTemplateDialog(context, ref, project.id),
                 tooltip: 'Terapkan Template',
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                onPressed: () => _confirmDeleteProject(context, ref, project),
+                onPressed: () => _confirmDeleteProject(context, ref, project), // Kirim data fresh
                 tooltip: 'Hapus Proyek',
               ),
             ],
@@ -236,19 +223,17 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
           body: tasksAsyncValue.when(
             data: (tasks) {
               final selectedDay = _selectedDay;
-              final completedTasksOnSelectedDay = selectedDay != null
-                  ? _getTasksForDay(selectedDay, tasks)
-                  : <Task>[];
+              final completedTasksOnSelectedDay =
+                  selectedDay != null ? _getTasksForDay(selectedDay, tasks) : <Task>[];
 
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ProjectInfoSection(project: project), // Kirim data 'project' yang baru
+                    _ProjectInfoSection(project: project), // Kirim data fresh
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Text('Semua Tugas',
-                          style: Theme.of(context).textTheme.titleLarge),
+                      child: Text('Semua Tugas', style: Theme.of(context).textTheme.titleLarge),
                     ),
                     GlassContainer(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -256,9 +241,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                       child: tasks.isEmpty
                           ? const Padding(
                               padding: EdgeInsets.all(24.0),
-                              child: Center(
-                                  child:
-                                      Text('Belum ada tugas di proyek ini.')),
+                              child: Center(child: Text('Belum ada tugas di proyek ini.')),
                             )
                           : ListView.builder(
                               shrinkWrap: true,
@@ -271,17 +254,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                                   key: Key(task.id),
                                   direction: DismissDirection.endToStart,
                                   onDismissed: (_) {
-                                    ref
-                                        .read(firestoreServiceProvider)
-                                        .deleteTask(
-                                            projectId: project.id,
-                                            taskId: task.id);
+                                    ref.read(firestoreServiceProvider).deleteTask(projectId: project.id, taskId: task.id);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text(
-                                                'Tugas "${task.name}" dihapus')),
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Tugas "${task.name}" dihapus')),
                                       );
                                     }
                                   },
@@ -289,8 +265,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                                     color: Colors.red.shade700,
                                     alignment: Alignment.centerRight,
                                     padding: const EdgeInsets.only(right: 20.0),
-                                    child: const Icon(Icons.delete_sweep,
-                                        color: Colors.white),
+                                    child: const Icon(Icons.delete_sweep, color: Colors.white),
                                   ),
                                   child: TaskTile(task: task),
                                 );
@@ -300,16 +275,15 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text('Kalender Aktivitas',
-                          style: Theme.of(context).textTheme.titleLarge),
+                      child: Text('Kalender Aktivitas', style: Theme.of(context).textTheme.titleLarge),
                     ),
                     const SizedBox(height: 8),
+
                     GlassContainer(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                       child: TableCalendar<Task>(
-                        // ... sisa kode TableCalendar tidak berubah
-                         calendarFormat: CalendarFormat.week,
+                        calendarFormat: CalendarFormat.week,
                         firstDay: DateTime.utc(2022, 1, 1),
                         lastDay: DateTime.utc(2030, 12, 31),
                         focusedDay: _focusedDay,
@@ -377,9 +351,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                         ),
                       ),
                     ),
+                    
                     const SizedBox(height: 16),
-                    if (selectedDay != null &&
-                        completedTasksOnSelectedDay.isNotEmpty) ...[
+                    
+                    if (selectedDay != null && completedTasksOnSelectedDay.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
@@ -394,13 +369,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                         child: Column(
                           children: completedTasksOnSelectedDay
                               .map((task) => ListTile(
-                                    leading: const Icon(Icons.check_circle,
-                                        color: Colors.green),
+                                    leading: const Icon(Icons.check_circle, color: Colors.green),
                                     title: Text(task.name),
-                                    subtitle: task.lastCompletedTimestamp !=
-                                            null
-                                        ? Text(
-                                            'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
+                                    subtitle: task.lastCompletedTimestamp != null
+                                        ? Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
                                         : null,
                                   ))
                               .toList(),
@@ -413,8 +385,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) =>
-                Center(child: Text('Gagal memuat tugas: $err')),
+            error: (err, stack) => Center(child: Text('Gagal memuat tugas: $err')),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showAddTaskDialog(context, ref, project.id),
@@ -430,8 +401,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
       ),
       error: (err, stack) => Scaffold(
         backgroundColor: Colors.transparent,
-        appBar:
-            AppBar(backgroundColor: Colors.transparent, title: const Text('Error')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Error')),
         body: Center(child: Text('Gagal memuat proyek: $err')),
       ),
     );
@@ -512,37 +482,37 @@ class _ProjectInfoSection extends ConsumerWidget {
                                 '${w.walletName} (${_shortenAddress(w.publicAddress)})')
                             .toList();
 
-                        if (formattedValues.length <= 1) {
-                          return _DetailRow(
-                            icon: Icons.account_balance_wallet_outlined,
-                            label: 'Wallet',
-                            value: formattedValues.isEmpty
-                                ? 'Tidak ada'
-                                : formattedValues.first,
+                        if (formattedValues.length > 1) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _DetailRow(
+                                  icon: Icons.account_balance_wallet_outlined,
+                                  label: 'Wallet',
+                                  value: ''),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(left: 30, top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: formattedValues
+                                      .map((value) => Text(value,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium))
+                                      .toList(),
+                                ),
+                              ),
+                            ],
                           );
                         }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _DetailRow(
-                                icon: Icons.account_balance_wallet_outlined,
-                                label: 'Wallet',
-                                value: ''),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(left: 30, top: 4),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: formattedValues
-                                    .map((value) => Text(value,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium))
-                                    .toList(),
-                              ),
-                            ),
-                          ],
+                        
+                        return _DetailRow(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'Wallet',
+                          value: formattedValues.isEmpty
+                              ? 'Tidak ada'
+                              : formattedValues.first,
                         );
                       },
                       loading: () => const _DetailRow(
@@ -551,6 +521,9 @@ class _ProjectInfoSection extends ConsumerWidget {
                           value: 'Memuat...'),
                       error: (e, s) => const SizedBox.shrink(),
                     ),
+
+                    const SizedBox(height: 12),
+
                     allSocialsAsync.when(
                       data: (socials) {
                         final usedSocials = socials
@@ -561,48 +534,37 @@ class _ProjectInfoSection extends ConsumerWidget {
                             .map((s) => '${s.username} (${s.platform.name})')
                             .toList();
 
-                        // Logika "Pintar" untuk Jarak
-                        // Tambah SizedBox hanya jika ada wallet DAN akun
-                        final walletsExist = project.associatedWalletIds.isNotEmpty;
-                        final socialsExist = formattedValues.isNotEmpty;
-                        
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (walletsExist && socialsExist) const SizedBox(height: 12),
-                            if (formattedValues.length <= 1)
+                        if (formattedValues.length > 1) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               _DetailRow(
-                                icon: Icons.group_outlined,
-                                label: 'Akun',
-                                value: formattedValues.isEmpty
-                                    ? 'Tidak ada'
-                                    : formattedValues.first,
-                              )
-                            else
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _DetailRow(
-                                      icon: Icons.group_outlined,
-                                      label: 'Akun',
-                                      value: ''),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 30, top: 4),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: formattedValues
-                                          .map((value) => Text(value,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium))
-                                          .toList(),
-                                    ),
-                                  ),
-                                ],
-                              )
-                          ],
+                                  icon: Icons.group_outlined,
+                                  label: 'Akun',
+                                  value: ''),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(left: 30, top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: formattedValues
+                                      .map((value) => Text(value,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium))
+                                      .toList(),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        return _DetailRow(
+                          icon: Icons.group_outlined,
+                          label: 'Akun',
+                          value: formattedValues.isEmpty
+                              ? 'Tidak ada'
+                              : formattedValues.first,
                         );
                       },
                       loading: () => const _DetailRow(
