@@ -3,128 +3,127 @@ import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart'; // <-- TAMBAHKAN IMPORT INI
 
-// Provider allActiveTasksProvider tidak perlu diubah.
+// --- Model DashboardTasks tidak berubah ---
+class DashboardTasks {
+  final List<Task> overdueTasks;
+  final List<Task> todaysTasks;
+  final DateTime todaysDate;
+  final DateTime overdueDate;
+
+  DashboardTasks({
+    required this.overdueTasks,
+    required this.todaysTasks,
+    required this.todaysDate,
+    required this.overdueDate,
+  });
+}
+
+// --- PERBAIKAN UTAMA: allActiveTasksProvider ditulis ulang agar lebih andal ---
 final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
-  final controller = StreamController<List<Task>>();
+  
+  // 1. Ambil stream dari daftar proyek
+  return ref.watch(projectsStreamProvider).when(
+    data: (projects) {
+      final activeProjects = projects.where((p) => p.status == ProjectStatus.active);
 
-  final taskDataCache = <String, List<Task>>{};
-  final taskSubscriptions = <String, StreamSubscription>{};
-
-  void pushUpdatedTasks() {
-    final allTasks = taskDataCache.values.expand((tasks) => tasks).toList();
-    if (!controller.isClosed) {
-      controller.add(allTasks);
-    }
-  }
-
-  final projectsSubscription = firestoreService.getProjects().listen((projects) {
-    final activeProjects = projects.where((p) => p.status == ProjectStatus.active);
-    final activeProjectIds = activeProjects.map((p) => p.id).toSet();
-
-    final oldIds = taskSubscriptions.keys.toSet();
-    final removedIds = oldIds.difference(activeProjectIds);
-    for (final id in removedIds) {
-      taskSubscriptions[id]?.cancel();
-      taskSubscriptions.remove(id);
-      taskDataCache.remove(id);
-    }
-
-    for (final project in activeProjects) {
-      if (!taskSubscriptions.containsKey(project.id)) {
-        taskSubscriptions[project.id] =
-            firestoreService.getTasksForProject(project.id).listen((tasks) {
-          taskDataCache[project.id] = tasks;
-          pushUpdatedTasks();
-        });
+      if (activeProjects.isEmpty) {
+        // Jika tidak ada proyek aktif, kembalikan stream dengan daftar kosong
+        return Stream.value([]);
       }
-    }
 
-    pushUpdatedTasks();
-  });
+      // 2. Buat daftar stream tugas untuk setiap proyek aktif
+      final listOfStreams = activeProjects
+          .map((p) => firestoreService.getTasksForProject(p.id))
+          .toList();
 
-  ref.onDispose(() {
-    projectsSubscription.cancel();
-    for (final sub in taskSubscriptions.values) {
-      sub.cancel();
-    }
-    controller.close();
-  });
-
-  return controller.stream;
+      // 3. Gabungkan semua stream tugas menjadi satu stream besar
+      // Setiap kali salah satu stream tugas diperbarui, stream gabungan ini akan mengeluarkan data baru
+      return Rx.combineLatest(listOfStreams, (List<List<Task>> allTasksLists) {
+        // Gabungkan semua daftar tugas menjadi satu daftar besar
+        return allTasksLists.expand((tasks) => tasks).toList();
+      });
+    },
+    // Sediakan nilai default saat proyek sedang dimuat atau jika ada error
+    loading: () => Stream.value([]),
+    error: (error, stackTrace) => Stream.error(error, stackTrace),
+  );
 });
 
-// --- PERBAIKAN UTAMA ADA DI SINI ---
-final todaysTasksProvider = Provider<AsyncValue<List<Task>>>((ref) {
+
+// --- Logika di bawah ini tidak perlu diubah, tapi saya sertakan agar lengkap ---
+final todaysTasksProvider = Provider<AsyncValue<DashboardTasks>>((ref) {
   return ref.watch(allActiveTasksProvider).whenData((tasks) {
     final now = DateTime.now();
-    final todaysResetTime = DateTime(now.year, now.month, now.day, 7);
-    final startOfDashboardDay = now.isBefore(todaysResetTime)
-        ? todaysResetTime.subtract(const Duration(days: 1))
-        : todaysResetTime;
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
 
-    final List<Task> todaysTasks = [];
+    final todaysResetTime = DateTime(today.year, today.month, today.day, 7);
+    final yesterdaysResetTime = todaysResetTime.subtract(const Duration(days: 1));
+
+    final List<Task> todaysApplicableTasks = [];
+    final List<Task> yesterdaysOverdueTasks = [];
 
     for (final task in tasks) {
       bool isTodaysTask = false;
-      bool needsReset = false;
-
-      // Hanya periksa reset jika tugas sudah selesai
+      bool needsResetForToday = false;
+      
       if (task.isCompleted && task.lastCompletedTimestamp != null) {
-        
-        // ==== FIX: LOGIKA RESET SEKARANG HANYA UNTUK DAILY & WEEKLY ====
-        if (task.category == TaskCategory.Daily) {
-          if (task.lastCompletedTimestamp!.isBefore(startOfDashboardDay)) {
-            needsReset = true;
-          }
-        } else if (task.category == TaskCategory.Weekly) {
-          if (now.difference(task.lastCompletedTimestamp!).inDays >= 7) {
-            needsReset = true;
-          }
+        if (task.category == TaskCategory.Daily && task.lastCompletedTimestamp!.isBefore(todaysResetTime)) {
+          needsResetForToday = true;
+        } else if (task.category == TaskCategory.Weekly && now.difference(task.lastCompletedTimestamp!).inDays >= 7) {
+          needsResetForToday = true;
         }
-        // Tugas OneTime akan dilewati, sehingga 'needsReset' tetap false.
       }
 
-      // Tentukan apakah tugas harus ditampilkan di dashboard hari ini
       switch (task.category) {
         case TaskCategory.OneTime:
-          // TUGAS ONETIME HANYA MUNCUL JIKA BELUM SELESAI.
-          if (!task.isCompleted) {
-            isTodaysTask = true;
-          }
+          if (!task.isCompleted) isTodaysTask = true;
           break;
         case TaskCategory.Daily:
         case TaskCategory.Weekly:
-          // Tugas harian & mingguan selalu relevan untuk ditampilkan.
           isTodaysTask = true;
           break;
       }
       
       if (isTodaysTask) {
-        if (needsReset) {
-          todaysTasks.add(Task(
-            id: task.id,
-            projectId: task.projectId,
-            name: task.name,
-            taskUrl: task.taskUrl,
-            category: task.category,
-            isCompleted: false, // Status di-reset
-            lastCompletedTimestamp: task.lastCompletedTimestamp,
-          ));
-        } else {
-          todaysTasks.add(task);
+        todaysApplicableTasks.add(
+          needsResetForToday
+            ? Task(id: task.id, projectId: task.projectId, name: task.name, taskUrl: task.taskUrl, category: task.category, isCompleted: false, lastCompletedTimestamp: task.lastCompletedTimestamp)
+            : task
+        );
+      }
+
+      if (now.isBefore(todaysResetTime)) {
+        if (task.category == TaskCategory.Daily) {
+          final bool isNotCompleted = !task.isCompleted;
+          final bool completedBeforeYesterdaysReset = task.isCompleted && task.lastCompletedTimestamp != null && task.lastCompletedTimestamp!.isBefore(yesterdaysResetTime);
+
+          if (isNotCompleted || completedBeforeYesterdaysReset) {
+            yesterdaysOverdueTasks.add(
+              Task(id: task.id, projectId: task.projectId, name: task.name, taskUrl: task.taskUrl, category: task.category, isCompleted: false, lastCompletedTimestamp: task.lastCompletedTimestamp)
+            );
+          }
         }
       }
     }
+    
+    final todaysTaskIds = todaysApplicableTasks.map((t) => t.id).toSet();
+    yesterdaysOverdueTasks.removeWhere((t) => todaysTaskIds.contains(t.id));
 
-    // Urutkan daftar agar tugas yang belum selesai ada di atas
-    todaysTasks.sort((a, b) {
+    todaysApplicableTasks.sort((a, b) {
       if (a.isCompleted && !b.isCompleted) return 1;
       if (!a.isCompleted && b.isCompleted) return -1;
       return 0;
     });
 
-    return todaysTasks;
+    return DashboardTasks(
+      todaysDate: today,
+      overdueDate: yesterday,
+      todaysTasks: todaysApplicableTasks,
+      overdueTasks: yesterdaysOverdueTasks,
+    );
   });
 });

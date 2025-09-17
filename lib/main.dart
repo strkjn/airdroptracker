@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+// --- 1. PASTIKAN IMPORT INI ADA ---
+import 'package:intl/date_symbol_data_local.dart'; 
 import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'features/auth/view/auth_gate.dart';
@@ -10,13 +12,19 @@ import 'features/auth/view/auth_gate.dart';
 final NotificationService notificationService = NotificationService();
 
 void main() async {
+  // Pastikan Flutter sudah siap
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // --- 2. PASTIKAN BARIS INISIALISASI INI ADA DAN DIJALANKAN ---
+  await initializeDateFormatting('id_ID', null);
 
   // Memuat environment variables dari file .env
   await dotenv.load(fileName: ".env");
 
+  // Inisialisasi notifikasi
   await notificationService.init();
 
+  // Inisialisasi Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Mengaktifkan cache Firestore
@@ -44,10 +52,9 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: Colors.transparent,
         
-        // Perbaikan ada di blok ini
-        cardTheme: CardThemeData( // Diubah dari CardTheme menjadi CardThemeData
+        cardTheme: CardThemeData(
           elevation: 2,
-          color: Colors.white.withAlpha(13), // Diubah ke withAlpha untuk menghindari deprecated
+          color: Colors.white.withAlpha(13),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

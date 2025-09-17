@@ -204,7 +204,7 @@ Widget build(BuildContext context) {
                   calendarStyle: CalendarStyle(
                     selectedDecoration: BoxDecoration(
                       color: const Color(0xFF50C878),
-                      borderRadius: BorderRadius.circular(8.0),
+                      shape: BoxShape.circle,
                     ),
                     selectedTextStyle: const TextStyle(
                       color: Colors.black,
@@ -212,7 +212,7 @@ Widget build(BuildContext context) {
                     ),
                     todayDecoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
+                      shape: BoxShape.circle, 
                     ),
                     todayTextStyle: const TextStyle(color: Colors.white),
                     defaultTextStyle: const TextStyle(color: Colors.white),
@@ -488,7 +488,7 @@ class _ProjectInfoSection extends ConsumerWidget {
                width: double.infinity,
                decoration: BoxDecoration(
                  color: Theme.of(context).colorScheme.surfaceVariant.withAlpha(77),
-                 borderRadius: BorderRadius.circular(8),
+                 shape: BoxShape.circle,
                ),
                child: Text(project.notes, style: Theme.of(context).textTheme.bodyMedium),
              ),

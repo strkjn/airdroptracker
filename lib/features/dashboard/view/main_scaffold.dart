@@ -45,9 +45,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   void _scheduleDailyNotification() {
     final tasksAsync = ref.read(todaysTasksProvider);
-    tasksAsync.whenData((tasks) {
-      if (tasks.isNotEmpty) {
-        final taskCount = tasks.length;
+    
+    // --- PERBAIKAN DI BLOK INI ---
+    tasksAsync.whenData((dashboardData) {
+      // Ambil total tugas dari kedua daftar (sisa kemarin dan hari ini)
+      final int taskCount = dashboardData.overdueTasks.length + dashboardData.todaysTasks.length;
+
+      // Periksa apakah total tugas lebih dari 0
+      if (taskCount > 0) {
         notificationService.scheduleDailySummaryNotification(
           hour: 7,
           minute: 0,
@@ -57,6 +62,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         );
       }
     });
+    // --- AKHIR PERBAIKAN ---
   }
 
   @override
@@ -100,7 +106,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                 child: Container(
                   height: 60,
-                  // PERBAIKAN: Menghapus border dan hanya menyisakan warna
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(25),
                   ),
@@ -126,7 +131,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   String _getAppBarTitle(int index) {
     switch (index) {
       case 0:
-        return 'Pusat Komando (Hari Ini)';
+        // Mengubah judul AppBar agar lebih umum
+        return 'Pusat Komando';
       case 1:
         return 'Daftar Proyek';
       case 2:

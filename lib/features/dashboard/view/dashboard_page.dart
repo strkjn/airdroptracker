@@ -1,10 +1,11 @@
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
-import 'package:airdrop_flow/core/widgets/glass_container.dart'; // PERBAIKAN: Import yang benar
+import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -17,8 +18,11 @@ class DashboardPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: todaysTasksAsync.when(
-        data: (tasks) {
-          if (tasks.isEmpty) {
+        data: (dashboardData) {
+          final overdueTasks = dashboardData.overdueTasks;
+          final todaysTasks = dashboardData.todaysTasks;
+
+          if (overdueTasks.isEmpty && todaysTasks.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
@@ -31,32 +35,62 @@ class DashboardPage extends ConsumerWidget {
             );
           }
           
-          final totalTasks = tasks.length;
-          final completedTasks = tasks.where((task) => task.isCompleted).length;
+          final allTasks = [...overdueTasks, ...todaysTasks];
+          final totalTasks = allTasks.length;
+          final completedTasks = allTasks.where((task) => task.isCompleted).length;
           final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
 
-          return Column(
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 16.0),
             children: [
               _ProgressCard(
                 progress: progress,
                 completedCount: completedTasks,
                 totalCount: totalTasks,
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return TaskCard(task: task);
-                  },
+
+              // --- BAGIAN UNTUK SISA TUGAS KEMARIN ---
+              if (overdueTasks.isNotEmpty) ...[
+                _DateHeader(
+                  title: "Sisa Tugas: ${DateFormat('EEEE, d MMMM', 'id_ID').format(dashboardData.overdueDate)}",
+                  isOverdue: true,
                 ),
-              ),
+                ...overdueTasks.map((task) => TaskCard(task: task)).toList(),
+              ],
+
+              // --- BAGIAN UNTUK TUGAS HARI INI ---
+              if (todaysTasks.isNotEmpty) ...[
+                _DateHeader(
+                   title: "Tugas Hari Ini: ${DateFormat('EEEE, d MMMM', 'id_ID').format(dashboardData.todaysDate)}",
+                ),
+                ...todaysTasks.map((task) => TaskCard(task: task)).toList(),
+              ],
             ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Terjadi error: $err')),
+      ),
+    );
+  }
+}
+
+// --- BARU: Widget untuk header tanggal ---
+class _DateHeader extends StatelessWidget {
+  const _DateHeader({required this.title, this.isOverdue = false});
+  final String title;
+  final bool isOverdue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: isOverdue ? Colors.orangeAccent : Colors.white70,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }
@@ -82,7 +116,7 @@ class _ProgressCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Progres Hari Ini',
+            'Progres Keseluruhan',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -130,7 +164,6 @@ class TaskCard extends ConsumerWidget {
   Future<void> _launchURL(String urlString, BuildContext context) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      // PERBAIKAN: Pemeriksaan 'mounted' untuk keamanan
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Tidak bisa membuka URL: $urlString')),
