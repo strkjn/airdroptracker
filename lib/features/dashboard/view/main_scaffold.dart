@@ -39,17 +39,24 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 
   void _scheduleDailyNotification() {
-    final tasksAsync = ref.read(todaysTasksProvider);
-    tasksAsync.whenData((tasks) {
+    // --- PERUBAHAN DI SINI ---
+    // Gunakan provider yang baru: dashboardTasksProvider
+    final tasksAsync = ref.read(dashboardTasksProvider); 
+    
+    tasksAsync.whenData((dashboardData) {
+      // Akses daftar tugas hari ini dari objek DashboardTasks
+      final tasks = dashboardData.today; 
+      
       if (tasks.isNotEmpty) {
-        final taskCount = tasks.length;
-        notificationService.scheduleDailySummaryNotification(
-          hour: 7,
-          minute: 0,
-          title: '🔥 Jangan Males Garap Airdrop!',
-          body:
-              'Anda memiliki $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
-        );
+        final taskCount = tasks.where((t) => !t.isCompleted).length;
+        if (taskCount > 0) {
+          notificationService.scheduleDailySummaryNotification(
+            hour: 7,
+            minute: 5, // Sedikit jeda setelah waktu reset
+            title: '🔥 Waktunya Garap Airdrop!',
+            body: 'Anda memiliki $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
+          );
+        }
       }
     });
   }
@@ -75,9 +82,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         ),
         body: Center(child: _widgetOptions[_selectedIndex]),
         
-        // --- PERUBAHAN 2: Menyesuaikan posisi Tombol ---
         floatingActionButton: Transform.translate(
-          // Geser tombol ke bawah agar pas dengan lekukan
           offset: const Offset(0, 15),
           child: FloatingActionButton(
             onPressed: () {
@@ -99,7 +104,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           elevation: 0,
           shape: const CircularNotchedRectangle(),
           notchMargin: 8.0,
-          // --- PERUBAHAN 1: Menyesuaikan ukuran Navigasi ---
           height: 75.0, 
           child: GlassContainer(
             borderRadius: 24,
@@ -149,7 +153,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   String _getAppBarTitle(int index) {
     switch (index) {
       case 0:
-        return 'Pusat Komando (Hari Ini)';
+        return 'Pusat Komando';
       case 1:
         return 'Daftar Proyek';
       case 2:

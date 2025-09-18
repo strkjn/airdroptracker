@@ -15,7 +15,6 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Panggil provider yang baru: dashboardTasksProvider
     final dashboardTasksAsync = ref.watch(dashboardTasksProvider);
 
     return Scaffold(
@@ -43,10 +42,8 @@ class DashboardPage extends ConsumerWidget {
               todaysTasks.where((task) => task.isCompleted).length;
           final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
 
-          // 2. Gunakan CustomScrollView untuk menggabungkan beberapa list
           return CustomScrollView(
             slivers: [
-              // Kartu Progres tetap di atas
               SliverToBoxAdapter(
                 child: _ProgressCard(
                   progress: progress,
@@ -55,39 +52,35 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
 
-              // --- Bagian Tugas Hari Ini ---
               if (todaysTasks.isNotEmpty) ...[
                 _buildSectionHeader(context, "Tugas Hari Ini"),
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final task = todaysTasks[index];
-                      return TaskCard(task: task, isEnabled: true); // Tugas hari ini selalu aktif
+                      return TaskCard(task: task, isEnabled: true);
                     },
                     childCount: todaysTasks.length,
                   ),
                 ),
               ],
 
-              // --- Bagian Tugas Besok ---
               if (tomorrowsTasks.isNotEmpty) ...[
                 _buildSectionHeader(context, "Akan Datang Besok"),
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final task = tomorrowsTasks[index];
-                      // Tugas besok dinonaktifkan
                       return TaskCard(
                         task: task,
                         isEnabled: false,
-                        // Menambahkan tanggal reset berikutnya
                         nextResetDate: task.lastCompletedTimestamp,
                       );
                     },
                     childCount: tomorrowsTasks.length,
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 80)), // Spacer di bawah
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ],
           );
@@ -99,7 +92,6 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 
-  // Helper widget untuk judul setiap bagian
   Widget _buildSectionHeader(BuildContext context, String title) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -179,7 +171,6 @@ final projectProvider =
   return await firestoreService.getProjectById(projectId);
 });
 
-// 3. Modifikasi TaskCard untuk menerima parameter isEnabled
 class TaskCard extends ConsumerWidget {
   const TaskCard({
     super.key,
@@ -214,10 +205,10 @@ class TaskCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projectAsync = ref.watch(projectProvider(task.projectId));
     final bool isCompleted = isEnabled ? task.isCompleted : false;
-    final Color textColor = isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
+    final Color textColor = isEnabled ? (isCompleted ? Colors.grey.shade400 : Colors.white) : Colors.grey.shade600;
 
     return Opacity(
-      opacity: isEnabled ? 1.0 : 0.6, // Buat kartu tugas besok terlihat redup
+      opacity: isEnabled ? 1.0 : 0.6,
       child: GlassContainer(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         padding: const EdgeInsets.fromLTRB(8.0, 8.0, 0, 8.0),
@@ -225,7 +216,6 @@ class TaskCard extends ConsumerWidget {
           children: [
             Checkbox(
               value: isCompleted,
-              // Nonaktifkan checkbox jika isEnabled false
               onChanged: isEnabled
                   ? (newValue) {
                       if (newValue != null) {
@@ -258,21 +248,39 @@ class TaskCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Text(
                               project.name,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withOpacity(0.8)),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // 4. Tampilkan tanggal reset untuk tugas besok
+                          // --- KODE YANG DIKEMBALIKAN ---
+                          if (project.websiteUrl.isNotEmpty)
+                            InkWell(
+                               onTap: () => _launchURL(project.websiteUrl, context),
+                               child: Padding(
+                                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                 child: Text(
+                                   _shortenUrl(project.websiteUrl),
+                                   textAlign: TextAlign.right,
+                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                     color: isEnabled ? Theme.of(context).colorScheme.primary : Colors.grey.shade700,
+                                     decoration: TextDecoration.underline,
+                                     decorationColor: isEnabled ? Theme.of(context).colorScheme.primary : Colors.grey.shade700,
+                                   ),
+                                 ),
+                               ),
+                            ),
+                          // --- AKHIR KODE YANG DIKEMBALIKAN ---
                           if (!isEnabled && nextResetDate != null)
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 DateFormat('d MMM', 'id_ID').format(nextResetDate!.add(const Duration(days: 1))),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.amber),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.amber.withOpacity(0.7)),
                               ),
                             )
                         ],

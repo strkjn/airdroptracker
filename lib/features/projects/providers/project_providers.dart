@@ -2,7 +2,8 @@
 
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
-import 'package.flutter_riverpod/flutter_riverpod.dart';
+// --- PERBAIKAN DI SINI ---
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 // 1. Buat class untuk menampung tugas yang sudah terstruktur

@@ -3,7 +3,9 @@
 
 import 'dart:ui';
 import 'package:airdrop_flow/core/models/project_model.dart';
+import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
+import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/projects/providers/project_providers.dart';
@@ -32,7 +34,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     _selectedDay = _focusedDay;
   }
 
-  // Fungsi ini tidak berubah, digunakan oleh kalender
   List<Task> _getTasksForDay(DateTime day, List<Task> allTasks) {
     return allTasks.where((task) {
       if (task.lastCompletedTimestamp == null) return false;
@@ -40,7 +41,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     }).toList();
   }
 
-  // --- SEMUA FUNGSI HELPER (DIALOG) TIDAK BERUBAH ---
   void _confirmDeleteProject(BuildContext context, WidgetRef ref, Project project) {
     showDialog(
       context: context,
@@ -162,9 +162,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
 
     return projectAsync.when(
       data: (project) {
-        // 1. Panggil provider yang baru untuk daftar tugas
         final projectTasksAsync = ref.watch(projectTasksProvider(project.id));
-        // 2. Panggil provider STREAM yang lama KHUSUS untuk data kalender
         final allTasksForCalendarAsync = ref.watch(tasksStreamProvider(project.id));
         
         final colorScheme = Theme.of(context).colorScheme;
@@ -209,7 +207,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                   children: [
                     _ProjectInfoSection(project: project),
                     
-                    // --- Tampilan Daftar Tugas yang Baru ---
                     if (taskData.today.isNotEmpty)
                       _TaskListSection(
                         title: 'Tugas Hari Ini',
@@ -238,7 +235,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    // 3. Bangun kalender menggunakan data dari `allTasksForCalendarAsync`
                     allTasksForCalendarAsync.when(
                       data: (allTasks) {
                         final completedTasksOnSelectedDay = selectedDay != null ? _getTasksForDay(selectedDay, allTasks) : <Task>[];
@@ -256,7 +252,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                                 focusedDay: _focusedDay,
                                 selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                                 startingDayOfWeek: StartingDayOfWeek.monday,
-                                eventLoader: (day) => _getTasksForDay(day, allTasks), // Gunakan semua tugas
+                                eventLoader: (day) => _getTasksForDay(day, allTasks),
                                 onDaySelected: (selectedDay, focusedDay) {
                                   if (!isSameDay(_selectedDay, selectedDay)) {
                                     setState(() {
@@ -315,7 +311,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(child: Text('Gagal memuat riwayat: $err')),
                     ),
-                    const SizedBox(height: 80), // Spacer di bawah
+                    const SizedBox(height: 80),
                   ],
                 ),
               );
@@ -336,7 +332,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   }
 }
 
-// Widget baru untuk menampilkan setiap bagian daftar tugas
 class _TaskListSection extends ConsumerWidget {
   const _TaskListSection({
     required this.title,
@@ -389,10 +384,6 @@ class _TaskListSection extends ConsumerWidget {
   }
 }
 
-
-// --- WIDGET-WIDGET DI BAWAH INI SEBAGIAN BESAR TIDAK BERUBAH ---
-// Saya hanya memindahkan TaskTile ke sini agar bisa digunakan kembali
-
 class TaskTile extends ConsumerWidget {
   const TaskTile({super.key, required this.task, required this.isEnabled});
   final Task task;
@@ -443,7 +434,9 @@ class TaskTile extends ConsumerWidget {
   }
 }
 
-class _ProjectInfoSection extends StatelessWidget {
+// --- PERBAIKAN UTAMA DI SINI ---
+// Mengubah 'StatelessWidget' menjadi 'ConsumerWidget'
+class _ProjectInfoSection extends ConsumerWidget {
   final Project project;
   const _ProjectInfoSection({required this.project});
 
@@ -457,10 +450,16 @@ class _ProjectInfoSection extends StatelessWidget {
     }
   }
 
+  String _shortenAddress(String address) {
+    if (address.length < 12) return address;
+    return '${address.substring(0, 6)}...${address.substring(address.length - 5)}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Tampilan bagian ini tidak perlu diubah, jadi saya persingkat
-    // untuk menjaga respons tetap fokus. Logika di dalamnya sudah benar.
+    final allWalletsAsync = ref.watch(walletsStreamProvider);
+    final allSocialsAsync = ref.watch(socialAccountsStreamProvider);
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -468,15 +467,63 @@ class _ProjectInfoSection extends StatelessWidget {
         children: [
           Text('Detail Proyek', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
-          if (project.websiteUrl.isNotEmpty)
-            _DetailRow(
-              icon: Icons.language,
-              label: 'Situs Web',
-              value: project.websiteUrl,
-              isUrl: true,
-              onTap: () => _launchURL(project.websiteUrl, context),
-            ),
-          // ... detail lainnya seperti blockchain, status, dll.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (project.websiteUrl.isNotEmpty)
+                      _DetailRow(
+                        icon: Icons.language,
+                        value: project.websiteUrl,
+                        isUrl: true,
+                        onTap: () => _launchURL(project.websiteUrl, context),
+                      ),
+                    if (project.blockchainNetwork.isNotEmpty)
+                      _DetailRow(
+                          icon: Icons.lan_outlined,
+                          value: project.blockchainNetwork),
+                    _DetailRow(
+                        icon: Icons.flag_outlined,
+                        value: project.status.name),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    allWalletsAsync.when(
+                      data: (wallets) {
+                        final usedWallets = wallets.where((w) => project.associatedWalletIds.contains(w.id)).toList();
+                        return _AssociatedItemsList(
+                          icon: Icons.account_balance_wallet_outlined,
+                          items: usedWallets.map((w) => '${w.walletName} (${_shortenAddress(w.publicAddress)})').toList(),
+                        );
+                      },
+                      loading: () => const _DetailRow(icon: Icons.account_balance_wallet_outlined, value: 'Memuat...'),
+                      error: (e, s) => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 12),
+                    allSocialsAsync.when(
+                      data: (socials) {
+                        final usedSocials = socials.where((s) => project.associatedSocialAccountIds.contains(s.id)).toList();
+                        return _AssociatedItemsList(
+                          icon: Icons.group_outlined,
+                          items: usedSocials.map((s) => '${s.username} (${s.platform.name})').toList(),
+                        );
+                      },
+                      loading: () => const _DetailRow(icon: Icons.group_outlined, value: 'Memuat...'),
+                      error: (e, s) => const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           if (project.notes.isNotEmpty) ...[
             const Divider(height: 24),
             Text('Catatan & Strategi', style: Theme.of(context).textTheme.titleMedium),
@@ -497,29 +544,61 @@ class _ProjectInfoSection extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  // Widget ini tidak berubah
+// Widget internal baru untuk merapikan tampilan daftar wallet/akun
+class _AssociatedItemsList extends StatelessWidget {
+  const _AssociatedItemsList({required this.icon, required this.items});
   final IconData icon;
-  final String? label;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return _DetailRow(icon: icon, value: 'Tidak ada');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items.map((item) => _DetailRow(icon: icon, value: item)).toList(),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
   final String value;
   final bool isUrl;
   final VoidCallback? onTap;
 
-  const _DetailRow({required this.icon, this.label, required this.value, this.isUrl = false, this.onTap});
+  const _DetailRow({
+    required this.icon,
+    required this.value,
+    this.isUrl = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0),
         child: Row(
           children: [
-            Icon(icon, size: 18),
+            Icon(icon, size: 18, color: isUrl ? colorScheme.primary : colorScheme.onSurfaceVariant),
             const SizedBox(width: 12),
-            if (label != null) Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(value, style: TextStyle(color: isUrl ? Colors.blueAccent : null))),
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: isUrl ? colorScheme.primary : null,
+                  decoration: isUrl ? TextDecoration.underline : null,
+                  decorationColor: colorScheme.primary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
