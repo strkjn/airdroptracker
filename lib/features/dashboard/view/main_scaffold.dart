@@ -1,11 +1,14 @@
 // lib/features/dashboard/view/main_scaffold.dart
 
 import 'dart:ui';
+import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/app_background.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart'; 
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:airdrop_flow/features/dashboard/view/dashboard_page.dart';
 import 'package:airdrop_flow/features/discover/view/discover_page.dart';
+// Import halaman notifikasi yang baru dibuat
+import 'package:airdrop_flow/features/notifications/view/notification_page.dart';
 import 'package:airdrop_flow/features/projects/view/add_edit_project_page.dart';
 import 'package:airdrop_flow/features/projects/view/project_list_page.dart';
 import 'package:airdrop_flow/features/settings/view/settings_page.dart';
@@ -39,20 +42,23 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 
   void _scheduleDailyNotification() {
-    // --- PERUBAHAN DI SINI ---
-    // Gunakan provider yang baru: dashboardTasksProvider
     final tasksAsync = ref.read(dashboardTasksProvider); 
     
     tasksAsync.whenData((dashboardData) {
-      // Akses daftar tugas hari ini dari objek DashboardTasks
       final tasks = dashboardData.today; 
       
       if (tasks.isNotEmpty) {
         final taskCount = tasks.where((t) => !t.isCompleted).length;
         if (taskCount > 0) {
+          // Buat notifikasi di Firestore saat jadwal notifikasi lokal dibuat
+          ref.read(firestoreServiceProvider).addNotification(
+                'Tugas Harian Tersedia',
+                'Ada $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
+              );
+          
           notificationService.scheduleDailySummaryNotification(
             hour: 7,
-            minute: 5, // Sedikit jeda setelah waktu reset
+            minute: 5,
             title: '🔥 Waktunya Garap Airdrop!',
             body: 'Anda memiliki $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
           );
@@ -64,6 +70,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Pantau jumlah notifikasi yang belum dibaca
+    final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
 
     return AppBackground(
       child: Scaffold(
@@ -78,7 +86,49 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               child: Container(color: Colors.transparent),
             ),
           ),
-          title: Text(_getAppBarTitle(_selectedIndex)),
+          title: const Text('Airdrop Flow'),
+          actions: [
+            // --- PERUBAHAN DI SINI: MENAMBAHKAN INDIKATOR ---
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {
+                    // Navigasi ke halaman notifikasi
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationPage()),
+                    );
+                  },
+                ),
+                // Tampilkan badge jika ada notifikasi belum dibaca
+                if (unreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
         body: Center(child: _widgetOptions[_selectedIndex]),
         
@@ -148,20 +198,5 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         ),
       ),
     );
-  }
-
-  String _getAppBarTitle(int index) {
-    switch (index) {
-      case 0:
-        return 'Pusat Komando';
-      case 1:
-        return 'Daftar Proyek';
-      case 2:
-        return 'Discover Airdrops';
-      case 3:
-        return 'Pengaturan & Manajemen';
-      default:
-        return 'Airdrop Flow';
-    }
   }
 }

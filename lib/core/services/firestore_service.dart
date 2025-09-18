@@ -1,3 +1,5 @@
+// lib/core/services/firestore_service.dart
+
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
@@ -5,6 +7,8 @@ import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/models/task_template_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// Import model yang baru kita buat
+import 'package:airdrop_flow/core/models/notification_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -17,7 +21,8 @@ class FirestoreService {
     return _db.collection('users').doc(userId).collection(collectionName);
   }
 
-  // --- Project Methods ---
+  // --- Metode Proyek, Tugas, Wallet, dll. tidak berubah ---
+  // ... (semua kode lama Anda dari addProject hingga applyTemplateToProject tetap di sini) ...
   Future<void> addProject(Project project) async {
     await _userCollection('projects').add(project.toJson());
   }
@@ -44,8 +49,7 @@ class FirestoreService {
       return snapshot.docs.map((doc) => Project.fromFirestore(doc)).toList();
     });
   }
-
-  // --- TAMBAHKAN METHOD BARU DI SINI ---
+  
   Future<Project?> getProjectById(String projectId) async {
     if (_userId == null) return null;
     final doc = await _userCollection('projects').doc(projectId).get();
@@ -64,9 +68,7 @@ class FirestoreService {
     return Project.fromFirestore(doc);
   });
 }
-  // ------------------------------------
 
-  // --- Task Methods ---
   Future<void> addTaskToProject({
     required String projectId,
     required String taskName,
@@ -101,7 +103,6 @@ class FirestoreService {
     await _userCollection('projects').doc(projectId).collection('tasks').doc(taskId).delete();
   }
 
-  // --- Wallet Methods ---
   Future<void> addWallet(Wallet wallet) async {
     await _userCollection('wallets').add(wallet.toJson());
   }
@@ -121,7 +122,6 @@ class FirestoreService {
     });
   }
 
-  // --- Social Account Methods ---
   Future<void> addSocialAccount(SocialAccount account) async {
     await _userCollection('social_accounts').add(account.toJson());
   }
@@ -141,7 +141,6 @@ class FirestoreService {
     });
   }
   
-  // --- Task Template Methods ---
   Future<void> addTaskTemplate(TaskTemplate template) async {
     await _userCollection('task_templates').add(template.toJson());
   }
@@ -173,5 +172,46 @@ class FirestoreService {
       writeBatch.set(newDocRef, newTask.toJson());
     }
     await writeBatch.commit();
+  }
+  
+  // --- BARU: Metode untuk Notifikasi ---
+
+  /// Menambahkan notifikasi baru untuk pengguna.
+  Future<void> addNotification(String title, String body) async {
+    if (_userId == null) return;
+    final newNotification = NotificationModel(
+      id: '',
+      title: title,
+      body: body,
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+    await _userCollection('notifications').add(newNotification.toJson());
+  }
+
+  /// Mendapatkan stream daftar notifikasi, diurutkan dari yang terbaru.
+  Stream<List<NotificationModel>> getNotifications() {
+    if (_userId == null) return Stream.value([]);
+    return _userCollection('notifications')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => NotificationModel.fromFirestore(doc)).toList();
+    });
+  }
+
+  /// Menandai satu notifikasi sebagai sudah dibaca.
+  Future<void> markNotificationAsRead(String notificationId) async {
+    if (_userId == null) return;
+    await _userCollection('notifications').doc(notificationId).update({'isRead': true});
+  }
+
+  /// Mendapatkan stream untuk jumlah notifikasi yang belum dibaca.
+  Stream<int> getUnreadNotificationsCount() {
+    if (_userId == null) return Stream.value(0);
+    return _userCollection('notifications')
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
   }
 }
