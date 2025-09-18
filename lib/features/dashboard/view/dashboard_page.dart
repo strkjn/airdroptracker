@@ -1,3 +1,5 @@
+// lib/features/dashboard/view/dashboard_page.dart
+
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
@@ -12,13 +14,11 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Kita tetap memantau todaysTasksProvider yang sudah cerdas
     final todaysTasksAsync = ref.watch(todaysTasksProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: todaysTasksAsync.when(
-        // 'tasks' di sini adalah List<Task> yang sudah diproses oleh provider
         data: (tasks) {
           if (tasks.isEmpty) {
             return const Center(
@@ -37,7 +37,6 @@ class DashboardPage extends ConsumerWidget {
           final completedTasks = tasks.where((task) => task.isCompleted).length;
           final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
 
-          // UI tidak perlu diubah karena logikanya sudah dipindahkan ke provider
           return Column(
             children: [
               _ProgressCard(
@@ -65,7 +64,6 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-// Widget _ProgressCard tidak perlu diubah
 class _ProgressCard extends StatelessWidget {
   const _ProgressCard({
     required this.progress,
@@ -87,18 +85,24 @@ class _ProgressCard extends StatelessWidget {
         children: [
           Text(
             'Progres Hari Ini',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
+                  fontSize: 18 // Ukuran font disesuaikan
                 ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
+                // --- PERUBAHAN UTAMA ADA DI SINI ---
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 12,
                   borderRadius: BorderRadius.circular(6),
+                  // Menggunakan warna primer dari tema (hijau)
+                  color: Theme.of(context).colorScheme.primary, 
+                  // Mengganti warna latar belakang biru menjadi abu-abu transparan
+                  backgroundColor: Colors.white.withAlpha(50), 
                 ),
               ),
               const SizedBox(width: 12),
@@ -114,7 +118,7 @@ class _ProgressCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '$completedCount dari $totalCount tugas selesai',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),
@@ -122,13 +126,11 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
-// Provider ini tetap diperlukan untuk mengambil detail proyek di TaskCard
 final projectProvider = FutureProvider.family<Project?, String>((ref, projectId) async {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return await firestoreService.getProjectById(projectId);
 });
 
-// Widget TaskCard tidak perlu diubah
 class TaskCard extends ConsumerWidget {
   const TaskCard({super.key, required this.task});
   final Task task;
@@ -207,7 +209,7 @@ class TaskCard extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             project.name,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: task.isCompleted ? Colors.grey : null,
                             ),
                             overflow: TextOverflow.ellipsis,

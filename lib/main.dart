@@ -1,10 +1,11 @@
+// lib/main.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// --- 1. PASTIKAN IMPORT INI ADA ---
-import 'package:intl/date_symbol_data_local.dart'; 
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'features/auth/view/auth_gate.dart';
@@ -12,22 +13,12 @@ import 'features/auth/view/auth_gate.dart';
 final NotificationService notificationService = NotificationService();
 
 void main() async {
-  // Pastikan Flutter sudah siap
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // --- 2. PASTIKAN BARIS INISIALISASI INI ADA DAN DIJALANKAN ---
   await initializeDateFormatting('id_ID', null);
-
-  // Memuat environment variables dari file .env
   await dotenv.load(fileName: ".env");
-
-  // Inisialisasi notifikasi
   await notificationService.init();
-
-  // Inisialisasi Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Mengaktifkan cache Firestore
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
@@ -41,29 +32,68 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryColor = Color(0xFFA9FF58);
+    
+    // --- PENYESUAIAN EFEK KACA DI SINI ---
+    // Opasitas warna latar belakang kartu ditingkatkan agar lebih terlihat
+    const Color cardBackgroundColor = Color(0x2AFFFFFF); // Dari 0x1A menjadi 0x2A
+    // Warna border dibuat sedikit lebih terang untuk mempertegas tepi "kaca"
+    const Color cardBorderColor = Color(0x3DFFFFFF); // Dari 0x26 menjadi 0x3D
+    const Color inputFillColor = Color(0x40000000);
+
+
     return MaterialApp(
       title: 'Airdrop Flow',
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.transparent, 
+        
+        colorScheme: const ColorScheme.dark(
+          primary: primaryColor,
+          onPrimary: Colors.black,
+          secondary: Colors.cyanAccent,
+          surface: cardBackgroundColor,
+          onSurface: Colors.white,
         ),
-        scaffoldBackgroundColor: Colors.transparent,
         
         cardTheme: CardThemeData(
-          elevation: 2,
-          color: Colors.white.withAlpha(13),
+          elevation: 0,
+          color: cardBackgroundColor,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: cardBorderColor, width: 1.0),
           ),
         ),
-        useMaterial3: true,
-      ),
-      
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: inputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          floatingLabelStyle: const TextStyle(color: primaryColor),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ),
+        
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
+          bodyMedium: TextStyle(color: Color(0xB3FFFFFF)),
+          labelSmall: TextStyle(color: Color(0x99FFFFFF)),
+        ),
+
         useMaterial3: true,
       ),
 
