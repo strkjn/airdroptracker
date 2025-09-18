@@ -7,6 +7,7 @@ import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -14,55 +15,104 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todaysTasksAsync = ref.watch(todaysTasksProvider);
+    // 1. Panggil provider yang baru: dashboardTasksProvider
+    final dashboardTasksAsync = ref.watch(dashboardTasksProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: todaysTasksAsync.when(
-        data: (tasks) {
-          if (tasks.isEmpty) {
+      body: dashboardTasksAsync.when(
+        data: (data) {
+          final todaysTasks = data.today;
+          final tomorrowsTasks = data.tomorrow;
+
+          if (todaysTasks.isEmpty && tomorrowsTasks.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text(
-                  '👍\nTidak ada tugas aktif untuk hari ini.\nSaatnya bersantai atau cari peluang baru!',
+                  '👍\nTidak ada tugas aktif.\nSaatnya bersantai atau cari peluang baru!',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 18, height: 1.5),
                 ),
               ),
             );
           }
-          
-          final totalTasks = tasks.length;
-          final completedTasks = tasks.where((task) => task.isCompleted).length;
+
+          final totalTasks = todaysTasks.length;
+          final completedTasks =
+              todaysTasks.where((task) => task.isCompleted).length;
           final progress = totalTasks > 0 ? completedTasks / totalTasks : 0.0;
 
-          return Column(
-            children: [
-              _ProgressCard(
-                progress: progress,
-                completedCount: completedTasks,
-                totalCount: totalTasks,
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return TaskCard(task: task);
-                  },
+          // 2. Gunakan CustomScrollView untuk menggabungkan beberapa list
+          return CustomScrollView(
+            slivers: [
+              // Kartu Progres tetap di atas
+              SliverToBoxAdapter(
+                child: _ProgressCard(
+                  progress: progress,
+                  completedCount: completedTasks,
+                  totalCount: totalTasks,
                 ),
               ),
+
+              // --- Bagian Tugas Hari Ini ---
+              if (todaysTasks.isNotEmpty) ...[
+                _buildSectionHeader(context, "Tugas Hari Ini"),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final task = todaysTasks[index];
+                      return TaskCard(task: task, isEnabled: true); // Tugas hari ini selalu aktif
+                    },
+                    childCount: todaysTasks.length,
+                  ),
+                ),
+              ],
+
+              // --- Bagian Tugas Besok ---
+              if (tomorrowsTasks.isNotEmpty) ...[
+                _buildSectionHeader(context, "Akan Datang Besok"),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final task = tomorrowsTasks[index];
+                      // Tugas besok dinonaktifkan
+                      return TaskCard(
+                        task: task,
+                        isEnabled: false,
+                        // Menambahkan tanggal reset berikutnya
+                        nextResetDate: task.lastCompletedTimestamp,
+                      );
+                    },
+                    childCount: tomorrowsTasks.length,
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)), // Spacer di bawah
+              ],
             ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Terjadi error saat memuat tugas: $err')),
+        error: (err, stack) =>
+            Center(child: Text('Terjadi error saat memuat tugas: $err')),
+      ),
+    );
+  }
+
+  // Helper widget untuk judul setiap bagian
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+        child: Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
       ),
     );
   }
 }
+
 
 class _ProgressCard extends StatelessWidget {
   const _ProgressCard({
@@ -87,22 +137,19 @@ class _ProgressCard extends StatelessWidget {
             'Progres Hari Ini',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18 // Ukuran font disesuaikan
+                  fontSize: 18,
                 ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                // --- PERUBAHAN UTAMA ADA DI SINI ---
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 12,
                   borderRadius: BorderRadius.circular(6),
-                  // Menggunakan warna primer dari tema (hijau)
-                  color: Theme.of(context).colorScheme.primary, 
-                  // Mengganti warna latar belakang biru menjadi abu-abu transparan
-                  backgroundColor: Colors.white.withAlpha(50), 
+                  color: Theme.of(context).colorScheme.primary,
+                  backgroundColor: Colors.white.withAlpha(50),
                 ),
               ),
               const SizedBox(width: 12),
@@ -126,14 +173,23 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
-final projectProvider = FutureProvider.family<Project?, String>((ref, projectId) async {
+final projectProvider =
+    FutureProvider.family<Project?, String>((ref, projectId) async {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return await firestoreService.getProjectById(projectId);
 });
 
+// 3. Modifikasi TaskCard untuk menerima parameter isEnabled
 class TaskCard extends ConsumerWidget {
-  const TaskCard({super.key, required this.task});
+  const TaskCard({
+    super.key,
+    required this.task,
+    required this.isEnabled,
+    this.nextResetDate,
+  });
   final Task task;
+  final bool isEnabled;
+  final DateTime? nextResetDate;
 
   Future<void> _launchURL(String urlString, BuildContext context) async {
     final Uri url = Uri.parse(urlString);
@@ -146,14 +202,9 @@ class TaskCard extends ConsumerWidget {
   }
 
   String _shortenUrl(String url, {int maxLength = 25, int startLength = 12, int endLength = 8}) {
-    if (url.length <= maxLength) {
-      return url;
-    }
+    if (url.length <= maxLength) return url;
     String cleanUrl = url.replaceAll(RegExp(r'^(https?:\/\/)?(www\.)?'), '');
-    if (cleanUrl.length <= maxLength) {
-      return cleanUrl;
-    }
-
+    if (cleanUrl.length <= maxLength) return cleanUrl;
     final start = cleanUrl.substring(0, startLength);
     final end = cleanUrl.substring(cleanUrl.length - endLength);
     return '$start...$end';
@@ -162,94 +213,88 @@ class TaskCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectAsync = ref.watch(projectProvider(task.projectId));
-    
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 0, 8.0),
-      child: Row(
-        children: [
-          Checkbox(
-            value: task.isCompleted,
-            onChanged: (newValue) {
-              if (newValue != null) {
-                ref
-                    .read(firestoreServiceProvider)
-                    .updateTaskStatus(
-                      projectId: task.projectId,
-                      taskId: task.id,
-                      isCompleted: newValue,
-                    );
-              }
-            },
-          ),
-          Expanded(
-            child: projectAsync.when(
-              data: (project) {
-                if (project == null) {
-                  return Text('Proyek untuk tugas "${task.name}" tidak ditemukan');
-                }
-                
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.name,
-                      style: TextStyle(
-                        decoration: task.isCompleted
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                        color: task.isCompleted ? Colors.grey : null,
-                        fontWeight: FontWeight.bold
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            project.name,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: task.isCompleted ? Colors.grey : null,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+    final bool isCompleted = isEnabled ? task.isCompleted : false;
+    final Color textColor = isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
+
+    return Opacity(
+      opacity: isEnabled ? 1.0 : 0.6, // Buat kartu tugas besok terlihat redup
+      child: GlassContainer(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.fromLTRB(8.0, 8.0, 0, 8.0),
+        child: Row(
+          children: [
+            Checkbox(
+              value: isCompleted,
+              // Nonaktifkan checkbox jika isEnabled false
+              onChanged: isEnabled
+                  ? (newValue) {
+                      if (newValue != null) {
+                        ref.read(firestoreServiceProvider).updateTaskStatus(
+                              projectId: task.projectId,
+                              taskId: task.id,
+                              isCompleted: newValue,
+                            );
+                      }
+                    }
+                  : null,
+            ),
+            Expanded(
+              child: projectAsync.when(
+                data: (project) {
+                  if (project == null) {
+                    return Text('Proyek untuk tugas "${task.name}" tidak ditemukan');
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.name,
+                        style: TextStyle(
+                          decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
                         ),
-                        if (project.websiteUrl.isNotEmpty)
-                          InkWell(
-                             onTap: () => _launchURL(project.websiteUrl, context),
-                             child: Padding(
-                               padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                               child: Text(
-                                 _shortenUrl(project.websiteUrl),
-                                 textAlign: TextAlign.right,
-                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                   color: Theme.of(context).colorScheme.primary,
-                                   decoration: TextDecoration.underline,
-                                   decorationColor: Theme.of(context).colorScheme.primary,
-                                 ),
-                               ),
-                             ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              project.name,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+                          // 4. Tampilkan tanggal reset untuk tugas besok
+                          if (!isEnabled && nextResetDate != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              child: Text(
+                                DateFormat('d MMM', 'id_ID').format(nextResetDate!.add(const Duration(days: 1))),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.amber),
+                              ),
+                            )
+                        ],
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+                ),
+                error: (err, stack) => const Text('Error memuat proyek'),
               ),
-              error: (err, stack) => const Text('Error memuat proyek'),
             ),
-          ),
-          if (task.taskUrl.isNotEmpty)
-            IconButton(
-              icon: Icon(Icons.link, color: Theme.of(context).colorScheme.secondary),
-              tooltip: 'Buka Tautan Tugas',
-              onPressed: () => _launchURL(task.taskUrl, context),
-            ),
-        ],
+            if (task.taskUrl.isNotEmpty)
+              IconButton(
+                icon: Icon(Icons.link, color: Theme.of(context).colorScheme.secondary),
+                tooltip: 'Buka Tautan Tugas',
+                onPressed: () => _launchURL(task.taskUrl, context),
+              ),
+          ],
+        ),
       ),
     );
   }
