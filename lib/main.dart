@@ -33,12 +33,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFA9FF58);
-    
-    // --- PENYESUAIAN EFEK KACA DI SINI ---
-    // Opasitas warna latar belakang kartu ditingkatkan agar lebih terlihat
-    const Color cardBackgroundColor = Color(0x2AFFFFFF); // Dari 0x1A menjadi 0x2A
-    // Warna border dibuat sedikit lebih terang untuk mempertegas tepi "kaca"
-    const Color cardBorderColor = Color(0x3DFFFFFF); // Dari 0x26 menjadi 0x3D
+    const Color cardBorderColor = Color(0x3DFFFFFF);
     const Color inputFillColor = Color(0x40000000);
 
 
@@ -47,19 +42,23 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.transparent, 
+        // --- PERUBAHAN DI SINI ---
+        // Mengatur latar belakang default menjadi hitam pekat.
+        scaffoldBackgroundColor: Colors.black, 
         
         colorScheme: const ColorScheme.dark(
           primary: primaryColor,
           onPrimary: Colors.black,
           secondary: Colors.cyanAccent,
-          surface: cardBackgroundColor,
+          // Surface color tidak lagi digunakan untuk background kartu utama
+          surface: Colors.transparent, 
           onSurface: Colors.white,
         ),
         
         cardTheme: CardThemeData(
           elevation: 0,
-          color: cardBackgroundColor,
+          // Color di sini tidak lagi relevan karena GlassContainer akan menanganinya
+          color: Colors.transparent, 
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: const BorderSide(color: cardBorderColor, width: 1.0),
