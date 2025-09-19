@@ -14,7 +14,7 @@ class GlassContainer extends StatelessWidget {
     required this.child,
     this.borderRadius = 16.0,
     this.margin,
-    this.padding = const EdgeInsets.all(16.0),
+    this.padding = const EdgeInsets.all(6.0),
   });
 
   @override
@@ -23,7 +23,7 @@ class GlassContainer extends StatelessWidget {
       borderRadius: BorderRadius.circular(borderRadius),
       // Efek blur (kaca) dikembalikan sebagai fokus utama
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
           margin: margin,
           padding: padding,
