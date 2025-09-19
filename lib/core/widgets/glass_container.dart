@@ -19,38 +19,27 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
-    // Hanya menggunakan Container dengan Decoration, tanpa blur.
-    return Container(
-      margin: margin,
-      padding: padding,
-      decoration: BoxDecoration(
-        // --- IMPLEMENTASI GRADASI SESUAI REFERENSI ---
-        gradient: RadialGradient(
-          colors: [
-            // Warna terang sebagai pusat cahaya
-            primaryColor.withOpacity(0.35),
-
-            // Warna dasar kartu yang gelap dan pekat
-            const Color(0xFF1A1A1C), 
-          ],
-          // Pusat cahaya di sudut kanan atas
-          center: const Alignment(1.0, -1.0),
-          
-          // Radius diatur agar transisi terasa lembut dan menyebar
-          radius: 1.5,
-
-          // Mengatur transisi agar warna terang lebih fokus di sudut
-          stops: const [0.0, 0.9],
-        ),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: Colors.white.withAlpha(51),
-          width: 1.0,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      // Efek blur (kaca) dikembalikan sebagai fokus utama
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+        child: Container(
+          margin: margin,
+          padding: padding,
+          decoration: BoxDecoration(
+            // --- KEMBALI KE EFEK KACA MURNI ---
+            // Gradasi warna dihilangkan
+            color: Colors.white.withOpacity(0.1), // Warna kaca semi-transparan
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: Colors.white.withAlpha(51),
+              width: 1.0,
+            ),
+          ),
+          child: child,
         ),
       ),
-      child: child,
     );
   }
 }
