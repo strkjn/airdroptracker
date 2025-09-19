@@ -61,7 +61,7 @@ class DashboardPage extends ConsumerWidget {
                               return _InfoCard(
                                 title: 'Task selesai',
                                 value: '$completed/$total',
-                                subtitle: '9 September 2025', // Placeholder
+                                subtitle: '19 September 2025', // Placeholder
                               );
                             },
                              loading: () => const _InfoCard(title: 'Task selesai', value: '-/-'),
@@ -105,8 +105,6 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 }
-
-// --- WIDGET-WIDGET HEADER & INFO CARD (TIDAK BERUBAH) ---
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -218,8 +216,6 @@ class _InfoCard extends StatelessWidget {
 }
 
 
-// --- WIDGET TASK LIST CARD (DIPERBARUI TOTAL) ---
-
 class _TaskListCard extends StatelessWidget {
   const _TaskListCard({required this.title, required this.tasks, required this.isEnabled});
   final String title;
@@ -228,11 +224,10 @@ class _TaskListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- PERBAIKAN PADDING ATAS & BAWAH DI SINI ---
     return GlassContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Membuat tinggi kartu menyesuaikan konten
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -250,18 +245,16 @@ class _TaskListCard extends StatelessWidget {
               ),
             ],
           ),
-          // Mengurangi jarak setelah judul
-          const SizedBox(height: 4), 
-          // Header tabel
+          const SizedBox(height: 4),
           Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
+            padding: const EdgeInsets.only(bottom: 4.0, right: 8.0),
             child: Row(
               children: [
-                // --- PERBAIKAN PROPorsi FLEX DI SINI ---
-                const Expanded(flex: 5, child: Text('Projek', style: TextStyle(color: Colors.white70, fontSize: 12))),
-                const Expanded(flex: 5, child: Text('Task', style: TextStyle(color: Colors.white70, fontSize: 12))),
+                // --- PERINTAH ANDA DILAKSANAKAN: flex diubah menjadi 2 ---
+                const Expanded(flex: 2, child: Text('Projek', style: TextStyle(color: Colors.white70, fontSize: 12))),
+                const Expanded(flex: 2, child: Text('Task', style: TextStyle(color: Colors.white70, fontSize: 12))),
                 const Expanded(flex: 2, child: Text('Url', style: TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center)),
-                const Expanded(flex: 3, child: Text('Status', style: TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center)),
+                const Expanded(flex: 2, child: Text('Status', style: TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center)),
               ],
             ),
           ),
@@ -306,13 +299,13 @@ class _TaskListItem extends ConsumerWidget {
 
     return projectAsync.when(
       data: (project) => SizedBox(
-        height: 30, // Memberi tinggi tetap pada setiap baris agar rapi
+        height: 48,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --- PERBAIKAN PROPorsi FLEX DI SINI ---
-            Expanded(flex: 5, child: Text(project.name, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: isEnabled ? Colors.white : Colors.grey.shade600))),
-            Expanded(flex: 5, child: Text(task.name, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: isEnabled ? Colors.white : Colors.grey.shade600))),
+            // --- PERINTAH ANDA DILAKSANAKAN: flex diubah menjadi 2 ---
+            Expanded(flex: 2, child: Text(project.name, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: isEnabled ? Colors.white : Colors.grey.shade600))),
+            Expanded(flex: 2, child: Text(task.name, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: isEnabled ? Colors.white : Colors.grey.shade600))),
             Expanded(
               flex: 2,
               child: (task.taskUrl.isNotEmpty)
@@ -325,7 +318,7 @@ class _TaskListItem extends ConsumerWidget {
                   : const SizedBox(),
             ),
             Expanded(
-              flex: 3,
+              flex: 2,
               child: Center(
                 child: Checkbox(
                   value: task.isCompleted,
@@ -347,14 +340,13 @@ class _TaskListItem extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => const SizedBox(height: 48),
-      error: (e, s) => const SizedBox(height: 48),
+      loading: () => const SizedBox(height: 48, child: Center(child: LinearProgressIndicator(backgroundColor: Colors.transparent))),
+      error: (e, s) => SizedBox(height: 48, child: Center(child: Icon(Icons.error_outline, color: Colors.red.shade400, size: 20))),
     );
   }
 }
 
 
-// Custom Painter (TIDAK BERUBAH)
 class _CircularProgressPainter extends CustomPainter {
   final double progress;
   final Color backgroundColor;
