@@ -57,13 +57,56 @@ class ProjectCard extends ConsumerWidget {
   final Project project;
   const ProjectCard({super.key, required this.project});
 
+  // --- FUNGSI URL YANG DIPERBARUI ---
   Future<void> _launchURL(String urlString, BuildContext context) async {
-    final Uri url = Uri.parse(urlString);
+    if (urlString.isEmpty) return;
+
+    final bool? shouldLaunch = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Peringatan'),
+          content: const Text(
+              'Anda akan membuka tautan eksternal dan meninggalkan aplikasi. Lanjutkan?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('Lanjutkan'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLaunch != true) {
+      return;
+    }
+
+    if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+      urlString = 'https://$urlString';
+    }
+
+    final Uri? url = Uri.tryParse(urlString);
+
+    if (url == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Format URL tidak valid: $urlString')),
+        );
+      }
+      return;
+    }
+
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tidak bisa membuka URL: $urlString')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tidak bisa membuka URL: $urlString')),
+        );
+      }
     }
   }
 
@@ -76,7 +119,6 @@ class ProjectCard extends ConsumerWidget {
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
-        // --- PERUBAHAN NAVIGASI ---
         onTap: () => AppRouter.goToProjectDetail(context, project.id),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

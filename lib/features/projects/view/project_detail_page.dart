@@ -65,9 +65,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 await ref
                     .read(firestoreServiceProvider)
                     .deleteProject(project.id);
-                if (context.mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                }
+                // --- PERBAIKAN DI SINI ---
+                Navigator.of(context).popUntil((route) => route.isFirst);
               },
             ),
           ],
@@ -151,7 +150,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () {
-                  // --- PERUBAHAN NAVIGASI ---
                   AppRouter.goToEditProject(context, project);
                 },
                 tooltip: 'Edit Proyek',
@@ -400,7 +398,8 @@ class TaskTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool isCompleted = isEnabled ? task.isCompleted : false;
+    final bool isCompleted = task.isCompleted;
+    
     final Color textColor =
         isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
     final nextResetDate =
