@@ -12,17 +12,16 @@ import 'package:airdrop_flow/core/services/security_service.dart';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/models/notification_model.dart';
+import 'package:airdrop_flow/core/models/airdrop_opportunity_model.dart';
 
 final firebaseFirestoreProvider =
     Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instance);
 final firebaseAuthProvider =
     Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
 
+// --- PERBAIKAN: Memberikan argumen yang dibutuhkan oleh constructor ---
 final firestoreServiceProvider = Provider<FirestoreService>((ref) {
-  return FirestoreService(
-    ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseAuthProvider),
-  );
+  return FirestoreService(ref.watch(firebaseFirestoreProvider));
 });
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
@@ -36,10 +35,11 @@ final projectsStreamProvider = StreamProvider<List<Project>>((ref) {
   return firestoreService.getProjects();
 });
 
+// --- PERBAIKAN: Menggunakan fungsi yang mengembalikan Stream ---
 final singleProjectStreamProvider =
     StreamProvider.family<Project, String>((ref, projectId) {
   final firestoreService = ref.watch(firestoreServiceProvider);
-  return firestoreService.getProjectById(projectId);
+  return firestoreService.getProjectStream(projectId);
 });
 
 final tasksStreamProvider =
@@ -69,12 +69,14 @@ final unreadNotificationsCountProvider = StreamProvider<int>((ref) {
   return firestoreService.getUnreadNotificationsCount();
 });
 
-// --- PENAMBAHAN KODE HANYA DI BLOK INI ---
+// --- DITAMBAHKAN: Provider yang hilang ---
+final airdropOpportunitiesProvider =
+    FutureProvider<List<AirdropOpportunity>>((ref) {
+  final apiService = ref.watch(airdropApiServiceProvider);
+  return apiService.fetchAirdrops();
+});
 
 /// Menyediakan stream untuk object User dari Firebase Auth.
-///
-/// Provider ini akan secara otomatis memberitahu UI setiap kali
-/// status otentikasi pengguna berubah (misalnya, saat login atau logout).
 final authStateChangesProvider = StreamProvider<User?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges;
 });

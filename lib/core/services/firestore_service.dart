@@ -10,7 +10,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:airdrop_flow/core/models/notification_model.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  // --- PERBAIKAN ---
+  // Constructor disederhanakan, hanya butuh instance Firestore.
+  // FirebaseAuth bisa diakses secara statis di mana saja.
+  FirestoreService(this._db);
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
@@ -21,7 +26,6 @@ class FirestoreService {
   }
 
   // --- Metode Proyek, Tugas, Wallet, dll. tidak berubah ---
-  // ... (semua kode lama Anda dari addProject hingga applyTemplateToProject tetap di sini) ...
   Future<void> addProject(Project project) async {
     await _userCollection('projects').add(project.toJson());
   }
@@ -49,6 +53,8 @@ class FirestoreService {
     });
   }
   
+  // Fungsi ini (getProjectById) mengembalikan Future dan merupakan sumber error di provider.
+  // Kita biarkan saja karena mungkin berguna di tempat lain, tapi tidak untuk StreamProvider.
   Future<Project?> getProjectById(String projectId) async {
     if (_userId == null) return null;
     final doc = await _userCollection('projects').doc(projectId).get();
@@ -57,16 +63,18 @@ class FirestoreService {
     }
     return null;
   }
+
+  // Ini fungsi yang BENAR untuk digunakan di StreamProvider
   Stream<Project> getProjectStream(String projectId) {
-  if (_userId == null) return Stream.error("User not logged in!");
-  final docRef = _userCollection('projects').doc(projectId);
-  return docRef.snapshots().map((doc) {
-    if (!doc.exists) {
-      throw Exception('Proyek tidak ditemukan');
-    }
-    return Project.fromFirestore(doc);
-  });
-}
+    if (_userId == null) return Stream.error("User not logged in!");
+    final docRef = _userCollection('projects').doc(projectId);
+    return docRef.snapshots().map((doc) {
+      if (!doc.exists) {
+        throw Exception('Proyek tidak ditemukan');
+      }
+      return Project.fromFirestore(doc);
+    });
+  }
 
   Future<void> addTaskToProject({
     required String projectId,
@@ -142,7 +150,6 @@ class FirestoreService {
 
   // --- BARU: Metode untuk Notifikasi ---
 
-  /// Menambahkan notifikasi baru untuk pengguna.
   Future<void> addNotification(String title, String body) async {
     if (_userId == null) return;
     final newNotification = NotificationModel(
@@ -155,7 +162,6 @@ class FirestoreService {
     await _userCollection('notifications').add(newNotification.toJson());
   }
 
-  /// Mendapatkan stream daftar notifikasi, diurutkan dari yang terbaru.
   Stream<List<NotificationModel>> getNotifications() {
     if (_userId == null) return Stream.value([]);
     return _userCollection('notifications')
@@ -166,13 +172,11 @@ class FirestoreService {
     });
   }
 
-  /// Menandai satu notifikasi sebagai sudah dibaca.
   Future<void> markNotificationAsRead(String notificationId) async {
     if (_userId == null) return;
     await _userCollection('notifications').doc(notificationId).update({'isRead': true});
   }
 
-  /// Mendapatkan stream untuk jumlah notifikasi yang belum dibaca.
   Stream<int> getUnreadNotificationsCount() {
     if (_userId == null) return Stream.value(0);
     return _userCollection('notifications')
