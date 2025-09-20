@@ -7,7 +7,6 @@ import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/discover/providers/discover_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT BARU ---
 import 'package:airdrop_flow/core/widgets/error_display.dart';
 
 class DiscoverPage extends ConsumerWidget {
@@ -19,12 +18,16 @@ class DiscoverPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
+      // --- PERUBAHAN ---
+      // Membungkus Column dengan Padding agar konsisten
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(12.0, 0, 12.0, 12.0),
+        child: Column(
+          children: [
+            // Widget pencarian dan filter tidak berubah
+            Column(
               children: [
+                const SizedBox(height: 16),
                 TextField(
                   decoration: const InputDecoration(
                     labelText: 'Cari airdrop...',
@@ -38,41 +41,42 @@ class DiscoverPage extends ConsumerWidget {
                 _buildFilterChips(context, ref),
               ],
             ),
-          ),
-          Expanded(
-            child: filteredAirdropsAsync.when(
-              data: (airdrops) {
-                if (airdrops.isEmpty) {
-                  return const Center(
-                    child: Text('Tidak ada airdrop yang cocok.'),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filteredAirdropsAsync.when(
+                data: (airdrops) {
+                  if (airdrops.isEmpty) {
+                    return const Center(
+                      child: Text('Tidak ada airdrop yang cocok.'),
+                    );
+                  }
+                  return ListView.builder(
+                    // --- PERUBAHAN --- Padding di sini dihilangkan
+                    padding: EdgeInsets.zero,
+                    itemCount: airdrops.length,
+                    itemBuilder: (context, index) {
+                      final airdrop = airdrops[index];
+                      return AirdropOpportunityCard(airdrop: airdrop);
+                    },
                   );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  itemCount: airdrops.length,
-                  itemBuilder: (context, index) {
-                    final airdrop = airdrops[index];
-                    return AirdropOpportunityCard(airdrop: airdrop);
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              // --- PERUBAHAN DI SINI ---
-              // Mengganti tampilan error lama dengan widget baru
-              error: (err, stack) {
-                return ErrorDisplay(
-                  errorMessage: err.toString(),
-                  onRetry: () => ref.invalidate(airdropOpportunitiesProvider),
-                );
-              },
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) {
+                  return ErrorDisplay(
+                    errorMessage: err.toString(),
+                    onRetry: () => ref.invalidate(airdropOpportunitiesProvider),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFilterChips(BuildContext context, WidgetRef ref) {
+    // ... (kode filter chip tidak berubah)
     final selectedFilter = ref.watch(difficultyFilterProvider);
     return Wrap(
       spacing: 8.0,
@@ -94,13 +98,14 @@ class DiscoverPage extends ConsumerWidget {
 }
 
 class AirdropOpportunityCard extends ConsumerWidget {
+  // ... (kode AirdropOpportunityCard tidak berubah)
   final AirdropOpportunity airdrop;
   const AirdropOpportunityCard({super.key, required this.airdrop});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
       padding: const EdgeInsets.all(12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

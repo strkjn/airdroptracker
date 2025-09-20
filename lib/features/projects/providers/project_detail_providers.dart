@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rxdart/rxdart.dart';
 
 /// Kelas sederhana untuk menampung data gabungan dari wallet dan akun sosial.
 class ProjectAssociatedData {
@@ -17,24 +16,32 @@ class ProjectAssociatedData {
   });
 }
 
-/// Provider yang menggabungkan stream dari wallets dan social accounts.
+/// --- PERUBAHAN UTAMA DI SINI ---
+/// Provider yang menggabungkan status AsyncValue dari wallets dan social accounts.
 ///
-/// Menggunakan RxDart `CombineLatestStream`, provider ini akan memancarkan
-/// sebuah objek [ProjectAssociatedData] baru setiap kali salah satu dari
-/// stream sumber (wallets atau social accounts) memancarkan data baru.
-/// Ini menyederhanakan widget UI karena hanya perlu memantau satu stream.
-final projectAssociatedDataProvider = StreamProvider<ProjectAssociatedData>((ref) {
-  final walletsStream = ref.watch(walletsStreamProvider.stream);
-  final socialAccountsStream = ref.watch(socialAccountsStreamProvider.stream);
+/// Pola ini lebih tangguh daripada menggunakan RxDart's CombineLatestStream secara langsung
+/// di dalam provider karena dapat menangani state loading dan error dari
+/// masing-masing stream sumber secara eksplisit.
+final projectAssociatedDataProvider = Provider.autoDispose<AsyncValue<ProjectAssociatedData>>((ref) {
+  final walletsAsync = ref.watch(walletsStreamProvider);
+  final socialsAsync = ref.watch(socialAccountsStreamProvider);
 
-  return CombineLatestStream.combine2(
-    walletsStream,
-    socialAccountsStream,
-    (List<Wallet> wallets, List<SocialAccount> socialAccounts) {
-      return ProjectAssociatedData(
-        wallets: wallets,
-        socialAccounts: socialAccounts,
-      );
-    },
-  );
+  // Jika salah satu stream sumber mengalami error, kembalikan state error tersebut.
+  if (walletsAsync.hasError) {
+    return AsyncValue.error(walletsAsync.error!, walletsAsync.stackTrace!);
+  }
+  if (socialsAsync.hasError) {
+    return AsyncValue.error(socialsAsync.error!, socialsAsync.stackTrace!);
+  }
+
+  // Jika salah satu stream sumber masih loading, kembalikan state loading.
+  if (walletsAsync.isLoading || socialsAsync.isLoading) {
+    return const AsyncValue.loading();
+  }
+
+  // Jika kedua stream sumber sudah memiliki data, gabungkan dan kembalikan.
+  return AsyncValue.data(ProjectAssociatedData(
+    wallets: walletsAsync.value!,
+    socialAccounts: socialsAsync.value!,
+  ));
 });

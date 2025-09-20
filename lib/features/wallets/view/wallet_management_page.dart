@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT BARU ---
 import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
 
 class WalletManagementPage extends ConsumerWidget {
@@ -33,8 +32,18 @@ class WalletManagementPage extends ConsumerWidget {
                 trailing: IconButton(
                   icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
                   onPressed: () {
-                    // Logika hapus tidak berubah dan tetap aman
                     ref.read(firestoreServiceProvider).deleteWallet(wallet.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Wallet "${wallet.walletName}" dihapus.',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red.shade700,
+                        // --- PERBAIKAN DI SINI ---
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                   },
                 ),
               );
@@ -51,23 +60,19 @@ class WalletManagementPage extends ConsumerWidget {
     );
   }
 
-  // --- FUNGSI DIALOG YANG DIPERBARUI & LEBIH SEDERHANA ---
-  void _showAddWalletDialog(BuildContext context, WidgetRef ref) {
+  void _showAddWalletDialog(BuildContext context, WidgetRef ref) async {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
 
-    // Menggunakan widget dialog kustom yang baru
-    showCustomFormDialog(
+    final bool? didSave = await showCustomFormDialog(
       context: context,
       title: 'Tambah Wallet Baru',
-      // 'children' diisi dengan field input yang kita butuhkan
       children: [
         TextFormField(
           controller: nameController,
           decoration: const InputDecoration(
             labelText: 'Nama Wallet (e.g. Metamask Utama)',
           ),
-          // Tambahkan validasi agar nama tidak boleh kosong
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'Nama wallet tidak boleh kosong.';
@@ -83,7 +88,6 @@ class WalletManagementPage extends ConsumerWidget {
           ),
         ),
       ],
-      // Logika 'onSave' tetap sama, hanya dipindahkan ke sini
       onSave: () {
         final newWallet = Wallet(
           id: '',
@@ -93,5 +97,19 @@ class WalletManagementPage extends ConsumerWidget {
         ref.read(firestoreServiceProvider).addWallet(newWallet);
       },
     );
+
+    if (didSave == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Wallet "${nameController.text.trim()}" berhasil ditambahkan!',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.green,
+          // --- PERBAIKAN DI SINI ---
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }

@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT BARU ---
 import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
 
 class SocialManagementPage extends ConsumerWidget {
@@ -37,6 +36,17 @@ class SocialManagementPage extends ConsumerWidget {
                     ref
                         .read(firestoreServiceProvider)
                         .deleteSocialAccount(account.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Akun "${account.username}" dihapus.',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red.shade700,
+                        // --- PERBAIKAN DI SINI ---
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                   },
                 ),
               );
@@ -56,7 +66,7 @@ class SocialManagementPage extends ConsumerWidget {
   IconData _getPlatformIcon(SocialPlatform platform) {
     switch (platform) {
       case SocialPlatform.twitter:
-        return Icons.flutter_dash; // Placeholder, bisa diganti ikon Twitter
+        return Icons.flutter_dash;
       case SocialPlatform.discord:
         return Icons.discord;
       case SocialPlatform.telegram:
@@ -64,18 +74,14 @@ class SocialManagementPage extends ConsumerWidget {
     }
   }
 
-  // --- FUNGSI DIALOG YANG DIPERBARUI & LEBIH SEDERHANA ---
-  void _showAddSocialDialog(BuildContext context, WidgetRef ref) {
+  void _showAddSocialDialog(BuildContext context, WidgetRef ref) async {
     final usernameController = TextEditingController();
-    // Variabel untuk menyimpan state dropdown
     var selectedPlatform = SocialPlatform.twitter;
 
-    showCustomFormDialog(
+    final bool? didSave = await showCustomFormDialog(
       context: context,
       title: 'Tambah Akun Sosial',
-      // 'children' diisi dengan widget yang kita butuhkan
       children: [
-        // StatefulBuilder diperlukan agar dropdown bisa diperbarui di dalam dialog
         StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return DropdownButtonFormField<SocialPlatform>(
@@ -108,7 +114,6 @@ class SocialManagementPage extends ConsumerWidget {
           },
         ),
       ],
-      // Logika 'onSave' tetap sama
       onSave: () {
         final newAccount = SocialAccount(
           id: '',
@@ -118,5 +123,19 @@ class SocialManagementPage extends ConsumerWidget {
         ref.read(firestoreServiceProvider).addSocialAccount(newAccount);
       },
     );
+
+    if (didSave == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Akun "${usernameController.text.trim()}" berhasil ditambahkan!',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.green,
+          // --- PERBAIKAN DI SINI ---
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }

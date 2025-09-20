@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// --- IMPORT BARU ---
 import 'package:airdrop_flow/core/app_router.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -54,15 +53,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar sudah tidak diperlukan di sini karena judul diatur oleh MainScaffold
+      backgroundColor: Colors.transparent, // Tambahkan ini
       body: ListView(
+        // --- PERUBAHAN --- Menambahkan padding
+        padding: const EdgeInsets.fromLTRB(12.0, 16.0, 12.0, 12.0),
         children: [
           ListTile(
             leading: const Icon(Icons.account_balance_wallet_outlined),
             title: const Text('Manajemen Wallet'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // --- PERUBAHAN NAVIGASI #1 ---
               AppRouter.goToWalletManagement(context);
             },
           ),
@@ -71,7 +71,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('Manajemen Akun Sosial'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // --- PERUBAHAN NAVIGASI #2 ---
               AppRouter.goToSocialManagement(context);
             },
           ),
