@@ -2,15 +2,14 @@
 
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
-// --- PERBAIKAN DI SINI ---
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-// 1. Buat class untuk menampung tugas yang sudah terstruktur
+// Kelas penampung data tidak berubah
 class ProjectTasks {
   final List<Task> today;
   final List<Task> tomorrow;
-  final List<Task> oneTime; // Tugas OneTime yang belum selesai
+  final List<Task> oneTime;
 
   ProjectTasks({
     required this.today,
@@ -19,25 +18,16 @@ class ProjectTasks {
   });
 }
 
-// 2. Ganti nama provider agar lebih deskriptif
-final projectTasksProvider =
-    Provider.family<AsyncValue<ProjectTasks>, String>((ref, projectId) {
-
-  // Pantau AsyncValue dari stream provider, BUKAN stream-nya langsung
+// --- PERUBAHAN UTAMA LOGIKA RESET DIMULAI DI SINI ---
+final projectTasksProvider = Provider.family<AsyncValue<ProjectTasks>, String>((ref, projectId) {
   final tasksAsync = ref.watch(tasksStreamProvider(projectId));
 
-  // Gunakan .whenData untuk memproses daftar tugas saat tersedia
   return tasksAsync.whenData((tasks) {
     final location = tz.local;
     final now = tz.TZDateTime.now(location);
-
-    final todaysResetTime =
-        tz.TZDateTime(location, now.year, now.month, now.day, 7);
-
-    final startOfToday = now.isBefore(todaysResetTime)
-        ? todaysResetTime.subtract(const Duration(days: 1))
-        : todaysResetTime;
-    final endOfToday = startOfToday.add(const Duration(days: 1));
+    
+    // Mendefinisikan waktu reset untuk HARI INI pukul 7 pagi
+    final todaysResetTime = tz.TZDateTime(location, now.year, now.month, now.day, 7);
 
     final List<Task> todaysTasks = [];
     final List<Task> tomorrowsTasks = [];
@@ -51,60 +41,57 @@ final projectTasksProvider =
         continue;
       }
 
-      if (task.lastCompletedTimestamp == null) {
-        todaysTasks.add(task);
-        continue;
-      }
+      // Inisialisasi status tugas saat ini
+      bool isEffectivelyCompleted = task.isCompleted;
 
-      final lastCompletedLocal =
-          tz.TZDateTime.from(task.lastCompletedTimestamp!, location);
+      // Logika reset hanya berlaku untuk tugas yang sudah selesai (isCompleted = true)
+      if (task.isCompleted && task.lastCompletedTimestamp != null) {
+        final lastCompletedLocal = tz.TZDateTime.from(task.lastCompletedTimestamp!, location);
 
-      bool needsReset = false;
-      if (task.isCompleted) {
         if (task.category == TaskCategory.Daily) {
-          if (lastCompletedLocal.isBefore(startOfToday)) {
-            needsReset = true;
+          // TUGAS HARIAN: di-reset jika diselesaikan SEBELUM jam 7 pagi HARI INI.
+          if (lastCompletedLocal.isBefore(todaysResetTime)) {
+            isEffectivelyCompleted = false; // Anggap belum selesai untuk hari ini
           }
         } else if (task.category == TaskCategory.Weekly) {
+          // TUGAS MINGGUAN: di-reset jika sudah lewat 7 hari.
           if (now.difference(lastCompletedLocal).inDays >= 7) {
-            needsReset = true;
+            isEffectivelyCompleted = false; // Anggap belum selesai untuk minggu ini
           }
         }
       }
 
-      final taskToDisplay = needsReset
-          ? Task(
-              id: task.id,
-              projectId: task.projectId,
-              name: task.name,
-              taskUrl: task.taskUrl,
-              category: task.category,
-              isCompleted: false, // Di-reset
-              lastCompletedTimestamp: task.lastCompletedTimestamp,
-            )
-          : task;
+      final taskToDisplay = Task(
+        id: task.id,
+        projectId: task.projectId,
+        name: task.name,
+        taskUrl: task.taskUrl,
+        category: task.category,
+        isCompleted: isEffectivelyCompleted, // Gunakan status efektif
+        lastCompletedTimestamp: task.lastCompletedTimestamp,
+      );
 
+      // Tambahkan ke daftar yang sesuai
       if (!taskToDisplay.isCompleted) {
         todaysTasks.add(taskToDisplay);
         tomorrowsTasks.add(taskToDisplay);
       } else {
-        if (!lastCompletedLocal.isBefore(startOfToday) &&
-            lastCompletedLocal.isBefore(endOfToday)) {
-          todaysTasks.add(taskToDisplay);
-          tomorrowsTasks.add(Task(
-            id: task.id,
-            projectId: task.projectId,
-            name: task.name,
-            taskUrl: task.taskUrl,
-            category: task.category,
-            isCompleted: false,
-            lastCompletedTimestamp: task.lastCompletedTimestamp,
-          ));
-        }
+        // Jika sudah selesai HARI INI (setelah jam reset), tetap tampilkan di daftar hari ini
+        todaysTasks.add(taskToDisplay);
+        // Dan siapkan untuk besok dalam keadaan belum selesai
+        tomorrowsTasks.add(Task(
+          id: task.id,
+          projectId: task.projectId,
+          name: task.name,
+          taskUrl: task.taskUrl,
+          category: task.category,
+          isCompleted: false,
+          lastCompletedTimestamp: task.lastCompletedTimestamp,
+        ));
       }
     }
 
-    // Urutkan semua list
+    // Pengurutan tidak berubah
     todaysTasks.sort((a, b) {
       if (a.isCompleted && !b.isCompleted) return 1;
       if (!a.isCompleted && b.isCompleted) return -1;

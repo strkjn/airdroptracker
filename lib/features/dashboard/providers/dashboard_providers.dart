@@ -7,7 +7,7 @@ import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-// 1. Definisikan sebuah kelas untuk menampung hasil tugas yang sudah diproses
+// Kelas penampung data tidak berubah
 class DashboardTasks {
   final List<Task> today;
   final List<Task> tomorrow;
@@ -15,7 +15,7 @@ class DashboardTasks {
   DashboardTasks({required this.today, required this.tomorrow});
 }
 
-// Provider allActiveTasksProvider tidak perlu diubah, sudah sangat baik.
+// Provider untuk mengambil semua tugas aktif tidak berubah
 final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
   final controller = StreamController<List<Task>>();
@@ -66,8 +66,8 @@ final allActiveTasksProvider = StreamProvider<List<Task>>((ref) {
   return controller.stream;
 });
 
-// --- PERUBAHAN UTAMA ADA DI SINI ---
-// 2. Ubah nama provider agar lebih deskriptif dan kembalikan object DashboardTasks
+
+// --- PERUBAHAN UTAMA LOGIKA RESET DIMULAI DI SINI ---
 final dashboardTasksProvider = Provider<AsyncValue<DashboardTasks>>((ref) {
   final allTasksAsync = ref.watch(allActiveTasksProvider);
 
@@ -75,100 +75,68 @@ final dashboardTasksProvider = Provider<AsyncValue<DashboardTasks>>((ref) {
     final location = tz.local;
     final now = tz.TZDateTime.now(location);
 
-    // --- Definisi Waktu ---
-    // Waktu reset hari ini (jam 7 pagi)
-    final todaysResetTime =
-        tz.TZDateTime(location, now.year, now.month, now.day, 7);
-    // Waktu reset besok (jam 7 pagi)
-    final tomorrowsResetTime = todaysResetTime.add(const Duration(days: 1));
-
-    // --- Definisi Hari Operasional ---
-    // Awal hari operasional saat ini
-    final startOfToday = now.isBefore(todaysResetTime)
-        ? todaysResetTime.subtract(const Duration(days: 1))
-        : todaysResetTime;
-    // Akhir hari operasional saat ini (sama dengan awal hari operasional besok)
-    final endOfToday = startOfToday.add(const Duration(days: 1));
+    // Mendefinisikan waktu reset untuk HARI INI pukul 7 pagi
+    final todaysResetTime = tz.TZDateTime(location, now.year, now.month, now.day, 7);
 
     final List<Task> todaysTasks = [];
     final List<Task> tomorrowsTasks = [];
 
     for (final task in tasks) {
-      // Hanya proses tugas Harian (Daily) dan Mingguan (Weekly)
+      // Tugas 'OneTime' hanya muncul di daftar hari ini jika belum selesai
       if (task.category == TaskCategory.OneTime) {
-        // Tugas One-Time hanya muncul jika belum selesai
         if (!task.isCompleted) {
           todaysTasks.add(task);
         }
-        continue; // Lanjut ke iterasi berikutnya
+        continue; // Lanjut ke tugas berikutnya
       }
 
-      // Jika tugas belum pernah selesai sama sekali, anggap itu tugas hari ini.
-      if (task.lastCompletedTimestamp == null) {
-        todaysTasks.add(task);
-        continue;
-      }
+      // Inisialisasi status tugas saat ini
+      bool isEffectivelyCompleted = task.isCompleted;
 
-      final lastCompletedLocal =
-          tz.TZDateTime.from(task.lastCompletedTimestamp!, location);
+      // Logika reset hanya berlaku untuk tugas yang sudah selesai (isCompleted = true)
+      if (task.isCompleted && task.lastCompletedTimestamp != null) {
+        final lastCompletedLocal = tz.TZDateTime.from(task.lastCompletedTimestamp!, location);
 
-      // --- Logika Reset ---
-      bool needsReset = false;
-      if (task.isCompleted) {
         if (task.category == TaskCategory.Daily) {
-          // Jika diselesaikan SEBELUM awal hari ini, maka perlu di-reset.
-          if (lastCompletedLocal.isBefore(startOfToday)) {
-            needsReset = true;
+          // TUGAS HARIAN: di-reset jika diselesaikan SEBELUM jam 7 pagi HARI INI.
+          if (lastCompletedLocal.isBefore(todaysResetTime)) {
+            isEffectivelyCompleted = false; // Anggap belum selesai untuk hari ini
           }
         } else if (task.category == TaskCategory.Weekly) {
-          // Jika sudah lebih dari 7 hari, perlu di-reset.
+          // TUGAS MINGGUAN: di-reset jika sudah lewat 7 hari. Logika ini tetap.
           if (now.difference(lastCompletedLocal).inDays >= 7) {
-            needsReset = true;
+            isEffectivelyCompleted = false; // Anggap belum selesai untuk minggu ini
           }
         }
       }
 
-      final taskToDisplay = needsReset
-          ? Task(
-              id: task.id,
-              projectId: task.projectId,
-              name: task.name,
-              taskUrl: task.taskUrl,
-              category: task.category,
-              isCompleted: false, // Status di-reset
-              lastCompletedTimestamp: task.lastCompletedTimestamp,
-            )
-          : task;
+      // Buat objek tugas baru dengan status yang sudah disesuaikan
+      final currentTaskState = Task(
+        id: task.id,
+        projectId: task.projectId,
+        name: task.name,
+        taskUrl: task.taskUrl,
+        category: task.category,
+        isCompleted: isEffectivelyCompleted, // Gunakan status efektif
+        lastCompletedTimestamp: task.lastCompletedTimestamp,
+      );
 
-      // --- Penempatan Tugas (Hari Ini atau Besok) ---
-      // Jika tugas belum selesai atau baru saja di-reset
-      if (!taskToDisplay.isCompleted) {
-        todaysTasks.add(taskToDisplay);
-        // Tugas yang sama juga akan muncul besok
-        tomorrowsTasks.add(taskToDisplay);
-      }
-      // Jika tugas sudah selesai...
-      else {
-        // ...dan diselesaikan dalam rentang hari operasional ini.
-        if (!lastCompletedLocal.isBefore(startOfToday) &&
-            lastCompletedLocal.isBefore(endOfToday)) {
-          // Tugas tetap muncul hari ini (dalam keadaan selesai).
-          todaysTasks.add(taskToDisplay);
-          // Dan akan muncul lagi besok (dalam keadaan belum selesai).
-          tomorrowsTasks.add(Task(
-            id: task.id,
-            projectId: task.projectId,
-            name: task.name,
-            taskUrl: task.taskUrl,
-            category: task.category,
-            isCompleted: false, // Akan di-reset besok
-            lastCompletedTimestamp: task.lastCompletedTimestamp,
-          ));
-        }
-      }
+      // Tambahkan ke daftar tugas hari ini
+      todaysTasks.add(currentTaskState);
+
+      // Semua tugas berulang akan muncul lagi besok dalam keadaan belum selesai
+      tomorrowsTasks.add(Task(
+        id: task.id,
+        projectId: task.projectId,
+        name: task.name,
+        taskUrl: task.taskUrl,
+        category: task.category,
+        isCompleted: false, // Untuk besok, semua dianggap belum selesai
+        lastCompletedTimestamp: task.lastCompletedTimestamp,
+      ));
     }
 
-    // Urutkan kedua list agar yang belum selesai selalu di atas
+    // Pengurutan tidak berubah, yang belum selesai selalu di atas.
     todaysTasks.sort((a, b) {
       if (a.isCompleted && !b.isCompleted) return 1;
       if (!a.isCompleted && b.isCompleted) return -1;

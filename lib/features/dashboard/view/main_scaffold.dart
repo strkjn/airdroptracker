@@ -25,7 +25,6 @@ class MainScaffold extends ConsumerStatefulWidget {
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _selectedIndex = 0;
 
-  // Daftar halaman/widget untuk setiap tab
   static const List<Widget> _widgetOptions = <Widget>[
     DashboardPage(),
     ProjectListPage(),
@@ -33,47 +32,53 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     SettingsPage(),
   ];
 
-  // --- PERUBAHAN 1: Daftar judul untuk setiap halaman ---
-  // Judul ini akan ditampilkan di AppBar sesuai tab yang aktif.
-  // Untuk dashboard (indeks 0), kita biarkan kosong karena akan diganti sapaan.
   static const List<String> _widgetTitles = <String>[
-    '', // Judul untuk Dashboard (tidak digunakan)
+    '', // Dashboard
     'Proyek Saya',
     'Discover Airdrops',
     'Pengaturan'
   ];
 
-
   @override
   void initState() {
     super.initState();
+    // Pindahkan pemanggilan ke post-frame callback untuk memastikan `ref` siap digunakan.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scheduleDailyNotification();
+      _setupNotificationScheduler();
     });
   }
 
-  void _scheduleDailyNotification() {
-    final tasksAsync = ref.read(dashboardTasksProvider);
+  // --- PERUBAHAN UTAMA DI SINI ---
+  // Mengubah nama fungsi dan logikanya untuk menggunakan ref.listen.
+  void _setupNotificationScheduler() {
+    // `ref.listen` akan memantau provider.
+    // Kode di dalamnya akan dieksekusi setiap kali status provider berubah,
+    // misalnya dari 'loading' menjadi 'data'.
+    ref.listen<AsyncValue<DashboardTasks>>(dashboardTasksProvider, (previous, next) {
+      // Kita hanya peduli saat data baru yang valid masuk (next is AsyncData)
+      final tasksAsync = next;
+      tasksAsync.whenData((dashboardData) {
+        final tasks = dashboardData.today;
 
-    tasksAsync.whenData((dashboardData) {
-      final tasks = dashboardData.today;
+        if (tasks.isNotEmpty) {
+          final taskCount = tasks.where((t) => !t.isCompleted).length;
+          if (taskCount > 0) {
+            // Logika penjadwalan notifikasi tetap sama
+            ref.read(firestoreServiceProvider).addNotification(
+                  'Tugas Harian Tersedia',
+                  'Ada $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
+                );
 
-      if (tasks.isNotEmpty) {
-        final taskCount = tasks.where((t) => !t.isCompleted).length;
-        if (taskCount > 0) {
-          ref.read(firestoreServiceProvider).addNotification(
-                'Tugas Harian Tersedia',
-                'Ada $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
-              );
-
-          notificationService.scheduleDailySummaryNotification(
-            hour: 7,
-            minute: 5,
-            title: '🔥 Waktunya Garap Airdrop!',
-            body: 'Anda memiliki $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
-          );
+            notificationService.scheduleDailySummaryNotification(
+              hour: 7,
+              minute: 5,
+              title: '🔥 Waktunya Garap Airdrop!',
+              body:
+                  'Anda memiliki $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
+            );
+          }
         }
-      }
+      });
     });
   }
 
@@ -95,9 +100,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               child: Container(color: Colors.transparent),
             ),
           ),
-          // --- PERUBAHAN 2: Logika Judul AppBar Dinamis ---
-          // Jika tab dashboard (indeks 0) aktif, tampilkan sapaan.
-          // Jika tidak, tampilkan judul halaman dari daftar _widgetTitles.
           title: _selectedIndex == 0
               ? const _DashboardAppBarTitle()
               : Text(_widgetTitles[_selectedIndex]),
@@ -109,7 +111,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const NotificationPage()),
+                      MaterialPageRoute(
+                          builder: (context) => const NotificationPage()),
                     );
                   },
                 ),
@@ -142,7 +145,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           ],
         ),
         body: Center(child: _widgetOptions[_selectedIndex]),
-
         floatingActionButton: Transform.translate(
           offset: const Offset(0, 15),
           child: FloatingActionButton(
@@ -159,7 +161,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
         bottomNavigationBar: BottomAppBar(
           color: Colors.transparent,
           elevation: 0,
@@ -168,7 +169,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           height: 75.0,
           child: GlassContainer(
             borderRadius: 24,
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: <Widget>[
@@ -198,7 +200,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+              color:
+                  isSelected ? theme.colorScheme.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -212,8 +215,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 }
 
-// --- PERUBAHAN 3: Widget baru untuk Sapaan di AppBar ---
-// Widget ini berisi sapaan "Hallo!" yang sebelumnya ada di DashboardPage.
 class _DashboardAppBarTitle extends StatelessWidget {
   const _DashboardAppBarTitle();
 
@@ -228,13 +229,12 @@ class _DashboardAppBarTitle extends StatelessWidget {
                 color: Colors.white.withOpacity(0.8),
               ),
         ),
-        // Placeholder, nantinya bisa diganti dengan nama user yang login
         Text(
           'nama user',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 20, // Sedikit disesuaikan ukurannya
+                fontSize: 20,
               ),
         ),
       ],
