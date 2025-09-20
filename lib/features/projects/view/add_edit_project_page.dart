@@ -20,11 +20,8 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
   late TextEditingController _websiteController;
   late TextEditingController _notesController;
   late ProjectStatus _selectedStatus;
-
-  // --- PERUBAHAN: Menggunakan TextEditingController untuk jaringan ---
   late TextEditingController _networkController;
 
-  // --- BARU: State untuk menyimpan ID wallet & akun sosial yang dipilih ---
   Set<String> _selectedWalletIds = {};
   Set<String> _selectedSocialAccountIds = {};
 
@@ -37,7 +34,8 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
     _websiteController = TextEditingController(text: project?.websiteUrl ?? '');
     _notesController = TextEditingController(text: project?.notes ?? '');
     _selectedStatus = project?.status ?? ProjectStatus.active;
-    _networkController = TextEditingController(text: project?.blockchainNetwork ?? '');
+    _networkController =
+        TextEditingController(text: project?.blockchainNetwork ?? '');
 
     if (project != null) {
       _selectedWalletIds = project.associatedWalletIds.toSet();
@@ -54,7 +52,9 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
     super.dispose();
   }
 
+  // --- PERUBAHAN UTAMA ADA DI FUNGSI INI ---
   void _submitForm() {
+    // Memeriksa validitas form sebelum melanjutkan
     if (_formKey.currentState!.validate()) {
       final firestoreService = ref.read(firestoreServiceProvider);
       final isEditing = widget.project != null;
@@ -66,18 +66,32 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
         notes: _notesController.text.trim(),
         status: _selectedStatus,
         blockchainNetwork: _networkController.text.trim(),
-        // --- BARU: Menyimpan daftar ID yang dipilih ---
         associatedWalletIds: _selectedWalletIds.toList(),
         associatedSocialAccountIds: _selectedSocialAccountIds.toList(),
       );
 
+      // Menjalankan operasi database
       if (isEditing) {
         firestoreService.updateProject(projectData);
       } else {
         firestoreService.addProject(projectData);
       }
 
+      // Menyiapkan pesan sukses yang sesuai
+      final successMessage = isEditing
+          ? 'Proyek berhasil diperbarui!'
+          : 'Proyek berhasil ditambahkan!';
+
+      // Menutup halaman saat ini
       Navigator.of(context).pop();
+
+      // Menampilkan SnackBar di halaman sebelumnya untuk konfirmasi visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   }
 
@@ -85,7 +99,8 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.project == null ? 'Tambah Proyek Baru' : 'Edit Proyek'),
+        title:
+            Text(widget.project == null ? 'Tambah Proyek Baru' : 'Edit Proyek'),
         actions: [
           IconButton(icon: const Icon(Icons.save), onPressed: _submitForm),
         ],
@@ -97,52 +112,54 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Input Fields Dasar ---
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Nama Proyek'),
-                validator: (value) => (value == null || value.isEmpty) ? 'Nama proyek tidak boleh kosong' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Nama proyek tidak boleh kosong'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _websiteController,
-                decoration: const InputDecoration(labelText: 'URL Website (Opsional)'),
+                decoration:
+                    const InputDecoration(labelText: 'URL Website (Opsional)'),
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<ProjectStatus>(
-                initialValue: _selectedStatus,
+                value: _selectedStatus, // Menggunakan value, bukan initialValue
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: ProjectStatus.values.map((status) {
-                  return DropdownMenuItem(value: status, child: Text(status.name));
+                  return DropdownMenuItem(
+                      value: status, child: Text(status.name));
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) setState(() => _selectedStatus = value);
                 },
               ),
               const SizedBox(height: 16),
-              
-              // --- PERUBAHAN: Input teks untuk Jaringan Blockchain ---
               TextFormField(
                 controller: _networkController,
-                decoration: const InputDecoration(labelText: 'Jaringan Blockchain (misal: Ethereum, Solana)'),
+                decoration: const InputDecoration(
+                    labelText: 'Jaringan Blockchain (misal: Ethereum, Solana)'),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _notesController,
-                decoration: const InputDecoration(labelText: 'Catatan & Strategi (Opsional)', alignLabelWithHint: true),
+                decoration: const InputDecoration(
+                    labelText: 'Catatan & Strategi (Opsional)',
+                    alignLabelWithHint: true),
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
               ),
               const Divider(height: 32),
-
-              // --- BAGIAN BARU: Pilih Wallet ---
-              Text('Tautkan Wallet', style: Theme.of(context).textTheme.titleMedium),
+              Text('Tautkan Wallet',
+                  style: Theme.of(context).textTheme.titleMedium),
               _buildWalletsSelector(),
               const SizedBox(height: 16),
-
-              // --- BAGIAN BARU: Pilih Akun Sosial ---
-              Text('Tautkan Akun Sosial', style: Theme.of(context).textTheme.titleMedium),
+              Text('Tautkan Akun Sosial',
+                  style: Theme.of(context).textTheme.titleMedium),
               _buildSocialsSelector(),
             ],
           ),
@@ -151,17 +168,22 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
     );
   }
 
-  // Widget untuk membangun daftar checkbox wallet
   Widget _buildWalletsSelector() {
     final walletsAsync = ref.watch(walletsStreamProvider);
     return walletsAsync.when(
       data: (wallets) {
-        if (wallets.isEmpty) return const Text('Tidak ada wallet. Tambahkan di halaman Pengaturan.');
+        if (wallets.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Text('Tidak ada wallet. Tambahkan di halaman Pengaturan.'),
+          );
+        }
         return Column(
           children: wallets.map((wallet) {
             return CheckboxListTile(
               title: Text(wallet.walletName),
-              subtitle: Text(wallet.publicAddress, overflow: TextOverflow.ellipsis),
+              subtitle:
+                  Text(wallet.publicAddress, overflow: TextOverflow.ellipsis),
               value: _selectedWalletIds.contains(wallet.id),
               onChanged: (isSelected) {
                 setState(() {
@@ -181,12 +203,16 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
     );
   }
 
-  // Widget untuk membangun daftar checkbox akun sosial
   Widget _buildSocialsSelector() {
     final socialsAsync = ref.watch(socialAccountsStreamProvider);
     return socialsAsync.when(
       data: (socials) {
-        if (socials.isEmpty) return const Text('Tidak ada akun sosial. Tambahkan di halaman Pengaturan.');
+        if (socials.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Text('Tidak ada akun sosial. Tambahkan di halaman Pengaturan.'),
+          );
+        }
         return Column(
           children: socials.map((account) {
             return CheckboxListTile(

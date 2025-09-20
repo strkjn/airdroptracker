@@ -1,8 +1,13 @@
+// lib/core/services/auth_service.dart
+
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // --- PERUBAHAN DI SINI ---
+  /// Stream yang memantau perubahan status otentikasi (login/logout).
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<User?> signUp({
     required String email,
@@ -34,7 +39,3 @@ class AuthService {
     await _auth.signOut();
   }
 }
-
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
-});

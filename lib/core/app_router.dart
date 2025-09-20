@@ -8,6 +8,7 @@ import 'package:airdrop_flow/features/projects/view/project_detail_page.dart';
 import 'package:airdrop_flow/features/socials/view/social_management_page.dart';
 import 'package:airdrop_flow/features/wallets/view/wallet_management_page.dart';
 import 'package:flutter/material.dart';
+import 'package:airdrop_flow/core/models/project_model.dart';
 
 /// Kelas ini mengelola semua logika navigasi dan rute aplikasi.
 /// Menggunakan rute yang diberi nama (named routes) membuat kode lebih bersih,
