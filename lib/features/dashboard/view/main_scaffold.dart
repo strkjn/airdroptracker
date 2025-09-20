@@ -1,6 +1,8 @@
 // lib/features/dashboard/view/main_scaffold.dart
 
 import 'dart:ui';
+import 'package:airdrop_flow/core/app_router.dart';
+import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/app_background.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
@@ -12,9 +14,6 @@ import 'package:airdrop_flow/features/settings/view/settings_page.dart';
 import 'package:airdrop_flow/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT BARU ---
-import 'package:airdrop_flow/core/app_router.dart';
-import 'package:airdrop_flow/core/models/project_model.dart'; // Diperlukan oleh AppRouter
 
 class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
@@ -103,7 +102,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined),
                   onPressed: () {
-                    // --- PERUBAHAN NAVIGASI #1 ---
                     AppRouter.goToNotifications(context);
                   },
                 ),
@@ -140,7 +138,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           offset: const Offset(0, 15),
           child: FloatingActionButton(
             onPressed: () {
-              // --- PERUBAHAN NAVIGASI #2 ---
               AppRouter.goToAddProject(context);
             },
             backgroundColor: theme.colorScheme.primary,
@@ -203,29 +200,46 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 }
 
-class _DashboardAppBarTitle extends StatelessWidget {
+// --- PERUBAHAN UTAMA ADA DI WIDGET INI ---
+class _DashboardAppBarTitle extends ConsumerWidget {
   const _DashboardAppBarTitle();
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Hallo !',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white.withOpacity(0.8),
-              ),
-        ),
-        Text(
-          'nama user',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-        ),
-      ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 1. Memantau provider otentikasi yang baru
+    final authState = ref.watch(authStateChangesProvider);
+
+    // 2. Menggunakan .when() untuk menangani semua kemungkinan state (loading, error, data)
+    return authState.when(
+      data: (user) {
+        // 3. Jika user login, kita gunakan namanya. Jika tidak ada, kita gunakan emailnya.
+        final displayName = user?.displayName ?? user?.email ?? 'Pengguna';
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hallo !',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+            ),
+            Text(
+              displayName.split('@').first,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+            ),
+          ],
+        );
+      },
+      // Menampilkan indikator loading kecil saat data pengguna sedang diambil
+      loading: () => const SizedBox(
+          width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.0)),
+      // Menampilkan teks error jika terjadi masalah
+      error: (err, stack) => const Text('Error'),
     );
   }
 }

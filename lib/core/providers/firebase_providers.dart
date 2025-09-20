@@ -69,6 +69,10 @@ final unreadNotificationsCountProvider = StreamProvider<int>((ref) {
   return firestoreService.getUnreadNotificationsCount();
 });
 
+// --- PENAMBAHAN KODE HANYA DI BLOK INI ---
+
+/// Menyediakan stream untuk object User dari Firebase Auth.
+///
 /// Provider ini akan secara otomatis memberitahu UI setiap kali
 /// status otentikasi pengguna berubah (misalnya, saat login atau logout).
 final authStateChangesProvider = StreamProvider<User?>((ref) {
