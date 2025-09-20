@@ -1,11 +1,11 @@
 // lib/features/settings/view/settings_page.dart
 
-import 'package:airdrop_flow/features/socials/view/social_management_page.dart';
-import 'package:airdrop_flow/features/wallets/view/wallet_management_page.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/app_router.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -54,8 +54,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Judul AppBar diubah agar konsisten dengan AppBar dinamis
-      // appBar: AppBar(title: const Text('Pengaturan & Manajemen')),
+      // AppBar sudah tidak diperlukan di sini karena judul diatur oleh MainScaffold
       body: ListView(
         children: [
           ListTile(
@@ -63,12 +62,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('Manajemen Wallet'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WalletManagementPage(),
-                ),
-              );
+              // --- PERUBAHAN NAVIGASI #1 ---
+              AppRouter.goToWalletManagement(context);
             },
           ),
           ListTile(
@@ -76,15 +71,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('Manajemen Akun Sosial'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SocialManagementPage(),
-                ),
-              );
+              // --- PERUBAHAN NAVIGASI #2 ---
+              AppRouter.goToSocialManagement(context);
             },
           ),
-          // --- ListTile untuk Manajemen Template Dihapus dari sini ---
           const Divider(),
           SwitchListTile(
             title: const Text('Kunci Aplikasi'),

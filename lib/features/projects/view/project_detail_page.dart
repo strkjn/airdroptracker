@@ -7,15 +7,18 @@ import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/error_display.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/projects/providers/project_providers.dart';
-import 'package:airdrop_flow/features/projects/view/add_edit_project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:airdrop_flow/core/widgets/error_display.dart';
+import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/app_router.dart';
+import '../providers/project_detail_providers.dart';
 
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final String projectId;
@@ -76,64 +79,53 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
   void _showAddTaskDialog(
       BuildContext context, WidgetRef ref, String projectId) {
     final nameController = TextEditingController();
-    TaskCategory selectedCategory = TaskCategory.OneTime;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Tambah Tugas Baru'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Nama Tugas')),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<TaskCategory>(
-                    value: selectedCategory,
-                    items: TaskCategory.values.map((TaskCategory category) {
-                      return DropdownMenuItem<TaskCategory>(
-                          value: category, child: Text(category.name));
-                    }).toList(),
-                    onChanged: (newValue) {
-                      if (newValue != null) {
-                        setState(() => selectedCategory = newValue);
-                      }
-                    },
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Batal')),
-                ElevatedButton(
-                  onPressed: () {
-                    if (nameController.text.isNotEmpty) {
-                      ref.read(firestoreServiceProvider).addTaskToProject(
-                            projectId: projectId,
-                            taskName: nameController.text.trim(),
-                            category: selectedCategory,
-                          );
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+    var selectedCategory = TaskCategory.OneTime;
+
+    showCustomFormDialog(
+        context: context,
+        title: 'Tambah Tugas Baru',
+        children: [
+          TextFormField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Nama Tugas'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nama tugas tidak boleh kosong.';
+                }
+                return null;
+              }),
+          const SizedBox(height: 16),
+          StatefulBuilder(
+            builder: (context, setDialogState) {
+              return DropdownButtonFormField<TaskCategory>(
+                value: selectedCategory,
+                items: TaskCategory.values.map((TaskCategory category) {
+                  return DropdownMenuItem<TaskCategory>(
+                      value: category, child: Text(category.name));
+                }).toList(),
+                onChanged: (newValue) {
+                  if (newValue != null) {
+                    setDialogState(() => selectedCategory = newValue);
+                  }
+                },
+                decoration: const InputDecoration(labelText: 'Kategori'),
+              );
+            },
+          ),
+        ],
+        onSave: () {
+          ref.read(firestoreServiceProvider).addTaskToProject(
+                projectId: projectId,
+                taskName: nameController.text.trim(),
+                category: selectedCategory,
+              );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    final projectAsync = ref.watch(singleProjectStreamProvider(widget.projectId));
+    final projectAsync =
+        ref.watch(singleProjectStreamProvider(widget.projectId));
 
     return projectAsync.when(
       data: (project) {
@@ -158,10 +150,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => AddEditProjectPage(project: project))),
+                onPressed: () {
+                  // --- PERUBAHAN NAVIGASI ---
+                  AppRouter.goToEditProject(context, project);
+                },
                 tooltip: 'Edit Proyek',
               ),
               IconButton(
@@ -205,8 +197,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                           style: Theme.of(context).textTheme.titleLarge),
                     ),
                     const SizedBox(height: 8),
-
-                    // --- PERUBAHAN ERROR HANDLING #2 ---
                     allTasksForCalendarAsync.when(
                       data: (allTasks) {
                         final completedTasksOnSelectedDay = selectedDay != null
@@ -219,8 +209,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                             GlassContainer(
                               margin:
                                   const EdgeInsets.symmetric(horizontal: 16),
-                              padding:
-                                  const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                               child: TableCalendar<Task>(
                                 calendarFormat: CalendarFormat.week,
                                 firstDay: DateTime.utc(2022, 1, 1),
@@ -279,19 +268,19 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                                     horizontal: 16.0),
                                 child: Text(
                                     'Aktivitas pada ${DateFormat.yMMMMd('id_ID').format(selectedDay)}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge),
+                                    style:
+                                        Theme.of(context).textTheme.titleLarge),
                               ),
                               const SizedBox(height: 8),
                               GlassContainer(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 16),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16),
                                 padding: EdgeInsets.zero,
                                 child: Column(
                                   children: completedTasksOnSelectedDay
                                       .map((task) => ListTile(
-                                            leading: const Icon(Icons.check_circle,
+                                            leading: const Icon(
+                                                Icons.check_circle,
                                                 color: Colors.green),
                                             title: Text(task.name),
                                             subtitle: task
@@ -312,7 +301,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                           const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => ErrorDisplay(
                         errorMessage: err.toString(),
-                        onRetry: () => ref.invalidate(tasksStreamProvider(project.id)),
+                        onRetry: () =>
+                            ref.invalidate(tasksStreamProvider(project.id)),
                       ),
                     ),
                     const SizedBox(height: 80),
@@ -321,7 +311,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            // --- PERUBAHAN ERROR HANDLING #3 ---
             error: (err, stack) => ErrorDisplay(
                 errorMessage: 'Gagal memuat daftar tugas.\n${err.toString()}',
                 onRetry: () => ref.invalidate(projectTasksProvider(project.id))),
@@ -337,13 +326,13 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
           backgroundColor: Colors.transparent,
           appBar: AppBar(),
           body: const Center(child: CircularProgressIndicator())),
-      // --- PERUBAHAN ERROR HANDLING #1 ---
       error: (err, stack) => Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(title: const Text('Error')),
         body: ErrorDisplay(
           errorMessage: 'Gagal memuat proyek.\n${err.toString()}',
-          onRetry: () => ref.invalidate(singleProjectStreamProvider(widget.projectId)),
+          onRetry: () =>
+              ref.invalidate(singleProjectStreamProvider(widget.projectId)),
         ),
       ),
     );
@@ -414,7 +403,8 @@ class TaskTile extends ConsumerWidget {
     final bool isCompleted = isEnabled ? task.isCompleted : false;
     final Color textColor =
         isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
-    final nextResetDate = task.lastCompletedTimestamp?.add(const Duration(days: 1));
+    final nextResetDate =
+        task.lastCompletedTimestamp?.add(const Duration(days: 1));
 
     return Opacity(
       opacity: isEnabled ? 1.0 : 0.6,
@@ -480,8 +470,7 @@ class _ProjectInfoSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allWalletsAsync = ref.watch(walletsStreamProvider);
-    final allSocialsAsync = ref.watch(socialAccountsStreamProvider);
+    final associatedDataAsync = ref.watch(projectAssociatedDataProvider);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -518,42 +507,42 @@ class _ProjectInfoSection extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    allWalletsAsync.when(
-                      data: (wallets) {
-                        final usedWallets = wallets
-                            .where(
-                                (w) => project.associatedWalletIds.contains(w.id))
+                    associatedDataAsync.when(
+                      data: (data) {
+                        final usedWallets = data.wallets
+                            .where((w) =>
+                                project.associatedWalletIds.contains(w.id))
                             .toList();
-                        return _AssociatedItemsList(
-                          icon: Icons.account_balance_wallet_outlined,
-                          items: usedWallets
-                              .map((w) =>
-                                  '${w.walletName} (${_shortenAddress(w.publicAddress)})')
-                              .toList(),
+                        final usedSocials = data.socialAccounts
+                            .where((s) => project.associatedSocialAccountIds
+                                .contains(s.id))
+                            .toList();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _AssociatedItemsList(
+                              icon: Icons.account_balance_wallet_outlined,
+                              items: usedWallets
+                                  .map((w) =>
+                                      '${w.walletName} (${_shortenAddress(w.publicAddress)})')
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 12),
+                            _AssociatedItemsList(
+                              icon: Icons.group_outlined,
+                              items: usedSocials
+                                  .map((s) =>
+                                      '${s.username} (${s.platform.name})')
+                                  .toList(),
+                            ),
+                          ],
                         );
                       },
-                      loading: () => const _DetailRow(
-                          icon: Icons.account_balance_wallet_outlined,
-                          value: 'Memuat...'),
-                      error: (e, s) => const SizedBox.shrink(),
-                    ),
-                    const SizedBox(height: 12),
-                    allSocialsAsync.when(
-                      data: (socials) {
-                        final usedSocials = socials
-                            .where((s) =>
-                                project.associatedSocialAccountIds.contains(s.id))
-                            .toList();
-                        return _AssociatedItemsList(
-                          icon: Icons.group_outlined,
-                          items: usedSocials
-                              .map((s) => '${s.username} (${s.platform.name})')
-                              .toList(),
-                        );
-                      },
-                      loading: () => const _DetailRow(
-                          icon: Icons.group_outlined, value: 'Memuat...'),
-                      error: (e, s) => const SizedBox.shrink(),
+                      loading: () => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2.0)),
+                      error: (e, s) => Text('Gagal memuat data wallet/sosial',
+                          style: TextStyle(color: Colors.red.shade300)),
                     ),
                   ],
                 ),
@@ -626,9 +615,8 @@ class _DetailRow extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 18,
-                color: isUrl
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant),
+                color:
+                    isUrl ? colorScheme.primary : colorScheme.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

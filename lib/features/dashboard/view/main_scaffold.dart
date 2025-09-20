@@ -7,13 +7,14 @@ import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:airdrop_flow/features/dashboard/view/dashboard_page.dart';
 import 'package:airdrop_flow/features/discover/view/discover_page.dart';
-import 'package:airdrop_flow/features/notifications/view/notification_page.dart';
-import 'package:airdrop_flow/features/projects/view/add_edit_project_page.dart';
 import 'package:airdrop_flow/features/projects/view/project_list_page.dart';
 import 'package:airdrop_flow/features/settings/view/settings_page.dart';
 import 'package:airdrop_flow/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/app_router.dart';
+import 'package:airdrop_flow/core/models/project_model.dart'; // Diperlukan oleh AppRouter
 
 class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
@@ -42,20 +43,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   void initState() {
     super.initState();
-    // Pindahkan pemanggilan ke post-frame callback untuk memastikan `ref` siap digunakan.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupNotificationScheduler();
     });
   }
 
-  // --- PERUBAHAN UTAMA DI SINI ---
-  // Mengubah nama fungsi dan logikanya untuk menggunakan ref.listen.
   void _setupNotificationScheduler() {
-    // `ref.listen` akan memantau provider.
-    // Kode di dalamnya akan dieksekusi setiap kali status provider berubah,
-    // misalnya dari 'loading' menjadi 'data'.
-    ref.listen<AsyncValue<DashboardTasks>>(dashboardTasksProvider, (previous, next) {
-      // Kita hanya peduli saat data baru yang valid masuk (next is AsyncData)
+    ref.listen<AsyncValue<DashboardTasks>>(dashboardTasksProvider,
+        (previous, next) {
       final tasksAsync = next;
       tasksAsync.whenData((dashboardData) {
         final tasks = dashboardData.today;
@@ -63,7 +58,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         if (tasks.isNotEmpty) {
           final taskCount = tasks.where((t) => !t.isCompleted).length;
           if (taskCount > 0) {
-            // Logika penjadwalan notifikasi tetap sama
             ref.read(firestoreServiceProvider).addNotification(
                   'Tugas Harian Tersedia',
                   'Ada $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
@@ -109,11 +103,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationPage()),
-                    );
+                    // --- PERUBAHAN NAVIGASI #1 ---
+                    AppRouter.goToNotifications(context);
                   },
                 ),
                 if (unreadCount > 0)
@@ -149,11 +140,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           offset: const Offset(0, 15),
           child: FloatingActionButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AddEditProjectPage()),
-              );
+              // --- PERUBAHAN NAVIGASI #2 ---
+              AppRouter.goToAddProject(context);
             },
             backgroundColor: theme.colorScheme.primary,
             shape: const CircleBorder(),

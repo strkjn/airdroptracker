@@ -2,13 +2,13 @@
 
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/error_display.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
-import 'package:airdrop_flow/features/projects/view/project_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 // --- IMPORT BARU ---
-import 'package:airdrop_flow/core/widgets/error_display.dart';
+import 'package:airdrop_flow/core/app_router.dart';
 
 class ProjectListPage extends ConsumerWidget {
   const ProjectListPage({super.key});
@@ -44,8 +44,6 @@ class ProjectListPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        // --- PERUBAHAN DI SINI ---
-        // Mengganti tampilan error lama dengan widget baru yang konsisten.
         error: (err, stack) => ErrorDisplay(
           errorMessage: err.toString(),
           onRetry: () => ref.invalidate(projectsStreamProvider),
@@ -69,7 +67,6 @@ class ProjectCard extends ConsumerWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(tasksStreamProvider(project.id));
@@ -79,12 +76,8 @@ class ProjectCard extends ConsumerWidget {
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProjectDetailPage(projectId: project.id),
-          ),
-        ),
+        // --- PERUBAHAN NAVIGASI ---
+        onTap: () => AppRouter.goToProjectDetail(context, project.id),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -1,14 +1,15 @@
+// lib/features/security/view/auth_check_page.dart
+
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
-import 'package:airdrop_flow/features/dashboard/view/main_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:airdrop_flow/core/app_router.dart';
 
 final authCheckProvider = FutureProvider<bool>((ref) async {
   final prefs = await SharedPreferences.getInstance();
   final isSecurityEnabled = prefs.getBool('isSecurityEnabled') ?? false;
 
-  // Jika keamanan tidak diaktifkan, langsung berikan akses.
   if (!isSecurityEnabled) {
     return true;
   }
@@ -16,14 +17,10 @@ final authCheckProvider = FutureProvider<bool>((ref) async {
   final securityService = ref.read(securityServiceProvider);
   final canUseBiometrics = await securityService.canUseBiometrics;
 
-  // Jika perangkat sama sekali tidak mendukung biometrik,
-  // berikan akses untuk mencegah pengguna terkunci.
   if (!canUseBiometrics) {
     return true;
   }
 
-  // Jika perangkat mendukung, lanjutkan dengan proses autentikasi
-  // (yang sekarang sudah mendukung fallback ke PIN/Pola).
   return await securityService.authenticate(
     reason: 'Autentikasi untuk membuka Airdrop Flow',
   );
@@ -62,9 +59,11 @@ class AuthCheckPage extends ConsumerWidget {
       data: (isAuthenticated) {
         if (isAuthenticated) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MainScaffold()),
-            );
+            // --- PERUBAHAN DI SINI ---
+            // Menggunakan AppRouter untuk navigasi yang lebih bersih dan aman.
+            // pushReplacementNamed digunakan agar pengguna tidak bisa menekan tombol "kembali"
+            // ke halaman pemeriksaan ini.
+            AppRouter.goToMainScaffold(context);
           });
           return const Scaffold(body: SizedBox.shrink());
         }
