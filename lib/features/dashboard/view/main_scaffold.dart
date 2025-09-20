@@ -3,11 +3,10 @@
 import 'dart:ui';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/app_background.dart';
-import 'package:airdrop_flow/core/widgets/glass_container.dart'; 
+import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/dashboard/providers/dashboard_providers.dart';
 import 'package:airdrop_flow/features/dashboard/view/dashboard_page.dart';
 import 'package:airdrop_flow/features/discover/view/discover_page.dart';
-// Import halaman notifikasi yang baru dibuat
 import 'package:airdrop_flow/features/notifications/view/notification_page.dart';
 import 'package:airdrop_flow/features/projects/view/add_edit_project_page.dart';
 import 'package:airdrop_flow/features/projects/view/project_list_page.dart';
@@ -26,12 +25,24 @@ class MainScaffold extends ConsumerStatefulWidget {
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    const DashboardPage(),
-    const ProjectListPage(),
-    const DiscoverPage(),
-    const SettingsPage(),
+  // Daftar halaman/widget untuk setiap tab
+  static const List<Widget> _widgetOptions = <Widget>[
+    DashboardPage(),
+    ProjectListPage(),
+    DiscoverPage(),
+    SettingsPage(),
   ];
+
+  // --- PERUBAHAN 1: Daftar judul untuk setiap halaman ---
+  // Judul ini akan ditampilkan di AppBar sesuai tab yang aktif.
+  // Untuk dashboard (indeks 0), kita biarkan kosong karena akan diganti sapaan.
+  static const List<String> _widgetTitles = <String>[
+    '', // Judul untuk Dashboard (tidak digunakan)
+    'Proyek Saya',
+    'Discover Airdrops',
+    'Pengaturan'
+  ];
+
 
   @override
   void initState() {
@@ -42,20 +53,19 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   }
 
   void _scheduleDailyNotification() {
-    final tasksAsync = ref.read(dashboardTasksProvider); 
-    
+    final tasksAsync = ref.read(dashboardTasksProvider);
+
     tasksAsync.whenData((dashboardData) {
-      final tasks = dashboardData.today; 
-      
+      final tasks = dashboardData.today;
+
       if (tasks.isNotEmpty) {
         final taskCount = tasks.where((t) => !t.isCompleted).length;
         if (taskCount > 0) {
-          // Buat notifikasi di Firestore saat jadwal notifikasi lokal dibuat
           ref.read(firestoreServiceProvider).addNotification(
                 'Tugas Harian Tersedia',
                 'Ada $taskCount tugas yang perlu diselesaikan hari ini. Semangat!',
               );
-          
+
           notificationService.scheduleDailySummaryNotification(
             hour: 7,
             minute: 5,
@@ -70,7 +80,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Pantau jumlah notifikasi yang belum dibaca
     final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
 
     return AppBackground(
@@ -86,22 +95,24 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               child: Container(color: Colors.transparent),
             ),
           ),
-          title: const Text('Airdrop Flow'),
+          // --- PERUBAHAN 2: Logika Judul AppBar Dinamis ---
+          // Jika tab dashboard (indeks 0) aktif, tampilkan sapaan.
+          // Jika tidak, tampilkan judul halaman dari daftar _widgetTitles.
+          title: _selectedIndex == 0
+              ? const _DashboardAppBarTitle()
+              : Text(_widgetTitles[_selectedIndex]),
           actions: [
-            // --- PERUBAHAN DI SINI: MENAMBAHKAN INDIKATOR ---
             Stack(
               children: [
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined),
                   onPressed: () {
-                    // Navigasi ke halaman notifikasi
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const NotificationPage()),
                     );
                   },
                 ),
-                // Tampilkan badge jika ada notifikasi belum dibaca
                 if (unreadCount > 0)
                   Positioned(
                     right: 8,
@@ -131,7 +142,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           ],
         ),
         body: Center(child: _widgetOptions[_selectedIndex]),
-        
+
         floatingActionButton: Transform.translate(
           offset: const Offset(0, 15),
           child: FloatingActionButton(
@@ -148,13 +159,13 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        
+
         bottomNavigationBar: BottomAppBar(
           color: Colors.transparent,
           elevation: 0,
           shape: const CircularNotchedRectangle(),
           notchMargin: 8.0,
-          height: 75.0, 
+          height: 75.0,
           child: GlassContainer(
             borderRadius: 24,
             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
@@ -163,7 +174,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               children: <Widget>[
                 _buildNavItem(icon: Icons.dashboard_outlined, index: 0),
                 _buildNavItem(icon: Icons.list_alt_outlined, index: 1),
-                const SizedBox(width: 40), 
+                const SizedBox(width: 40),
                 _buildNavItem(icon: Icons.explore_outlined, index: 2),
                 _buildNavItem(icon: Icons.settings_outlined, index: 3),
               ],
@@ -197,6 +208,36 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// --- PERUBAHAN 3: Widget baru untuk Sapaan di AppBar ---
+// Widget ini berisi sapaan "Hallo!" yang sebelumnya ada di DashboardPage.
+class _DashboardAppBarTitle extends StatelessWidget {
+  const _DashboardAppBarTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hallo !',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white.withOpacity(0.8),
+              ),
+        ),
+        // Placeholder, nantinya bisa diganti dengan nama user yang login
+        Text(
+          'nama user',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20, // Sedikit disesuaikan ukurannya
+              ),
+        ),
+      ],
     );
   }
 }
