@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/models/airdrop_opportunity_model.dart';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
-import 'package:airdrop_flow/core/models/task_template_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/services/airdrop_api_service.dart';
 import 'package:airdrop_flow/core/services/auth_service.dart';
@@ -47,11 +46,6 @@ final walletsStreamProvider = StreamProvider<List<Wallet>>((ref) {
 final socialAccountsStreamProvider = StreamProvider<List<SocialAccount>>((ref) {
   final firestoreService = ref.watch(firestoreServiceProvider);
   return firestoreService.getSocialAccounts();
-});
-
-final taskTemplatesStreamProvider = StreamProvider<List<TaskTemplate>>((ref) {
-  final firestoreService = ref.watch(firestoreServiceProvider);
-  return firestoreService.getTaskTemplates();
 });
 
 final singleProjectStreamProvider =

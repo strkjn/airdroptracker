@@ -1,7 +1,11 @@
+// lib/features/socials/view/social_management_page.dart
+
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
 
 class SocialManagementPage extends ConsumerWidget {
   const SocialManagementPage({super.key});
@@ -52,7 +56,7 @@ class SocialManagementPage extends ConsumerWidget {
   IconData _getPlatformIcon(SocialPlatform platform) {
     switch (platform) {
       case SocialPlatform.twitter:
-        return Icons.flutter_dash;
+        return Icons.flutter_dash; // Placeholder, bisa diganti ikon Twitter
       case SocialPlatform.discord:
         return Icons.discord;
       case SocialPlatform.telegram:
@@ -60,67 +64,58 @@ class SocialManagementPage extends ConsumerWidget {
     }
   }
 
+  // --- FUNGSI DIALOG YANG DIPERBARUI & LEBIH SEDERHANA ---
   void _showAddSocialDialog(BuildContext context, WidgetRef ref) {
     final usernameController = TextEditingController();
-    SocialPlatform selectedPlatform = SocialPlatform.twitter;
+    // Variabel untuk menyimpan state dropdown
+    var selectedPlatform = SocialPlatform.twitter;
 
-    showDialog(
+    showCustomFormDialog(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Tambah Akun Sosial'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButton<SocialPlatform>(
-                    value: selectedPlatform,
-                    isExpanded: true,
-                    items: SocialPlatform.values.map((platform) {
-                      return DropdownMenuItem(
-                        value: platform,
-                        child: Text(platform.name),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedPlatform = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: usernameController,
-                    decoration: const InputDecoration(labelText: 'Username'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Batal'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (usernameController.text.isNotEmpty) {
-                      final newAccount = SocialAccount(
-                        id: '',
-                        platform: selectedPlatform,
-                        username: usernameController.text.trim(),
-                      );
-                      ref
-                          .read(firestoreServiceProvider)
-                          .addSocialAccount(newAccount);
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
+      title: 'Tambah Akun Sosial',
+      // 'children' diisi dengan widget yang kita butuhkan
+      children: [
+        // StatefulBuilder diperlukan agar dropdown bisa diperbarui di dalam dialog
+        StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return DropdownButtonFormField<SocialPlatform>(
+              value: selectedPlatform,
+              isExpanded: true,
+              items: SocialPlatform.values.map((platform) {
+                return DropdownMenuItem(
+                  value: platform,
+                  child: Text(platform.name),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => selectedPlatform = value);
+                }
+              },
+              decoration: const InputDecoration(labelText: 'Platform'),
             );
           },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: usernameController,
+          decoration: const InputDecoration(labelText: 'Username'),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Username tidak boleh kosong.';
+            }
+            return null;
+          },
+        ),
+      ],
+      // Logika 'onSave' tetap sama
+      onSave: () {
+        final newAccount = SocialAccount(
+          id: '',
+          platform: selectedPlatform,
+          username: usernameController.text.trim(),
         );
+        ref.read(firestoreServiceProvider).addSocialAccount(newAccount);
       },
     );
   }

@@ -1,7 +1,11 @@
+// lib/features/wallets/view/wallet_management_page.dart
+
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
 
 class WalletManagementPage extends ConsumerWidget {
   const WalletManagementPage({super.key});
@@ -29,6 +33,7 @@ class WalletManagementPage extends ConsumerWidget {
                 trailing: IconButton(
                   icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
                   onPressed: () {
+                    // Logika hapus tidak berubah dan tetap aman
                     ref.read(firestoreServiceProvider).deleteWallet(wallet.id);
                   },
                 ),
@@ -46,53 +51,47 @@ class WalletManagementPage extends ConsumerWidget {
     );
   }
 
+  // --- FUNGSI DIALOG YANG DIPERBARUI & LEBIH SEDERHANA ---
   void _showAddWalletDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
 
-    showDialog(
+    // Menggunakan widget dialog kustom yang baru
+    showCustomFormDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tambah Wallet Baru'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nama Wallet (e.g. Metamask Utama)',
-              ),
-            ),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: 'Alamat Publik (0x...)',
-              ),
-            ),
-          ],
+      title: 'Tambah Wallet Baru',
+      // 'children' diisi dengan field input yang kita butuhkan
+      children: [
+        TextFormField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: 'Nama Wallet (e.g. Metamask Utama)',
+          ),
+          // Tambahkan validasi agar nama tidak boleh kosong
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Nama wallet tidak boleh kosong.';
+            }
+            return null;
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: addressController,
+          decoration: const InputDecoration(
+            labelText: 'Alamat Publik (0x...)',
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                final newWallet = Wallet(
-                  id: '',
-                  walletName: nameController.text.trim(),
-                  publicAddress: addressController.text.trim(),
-                );
-
-                ref.read(firestoreServiceProvider).addWallet(newWallet);
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+        ),
+      ],
+      // Logika 'onSave' tetap sama, hanya dipindahkan ke sini
+      onSave: () {
+        final newWallet = Wallet(
+          id: '',
+          walletName: nameController.text.trim(),
+          publicAddress: addressController.text.trim(),
+        );
+        ref.read(firestoreServiceProvider).addWallet(newWallet);
+      },
     );
   }
 }

@@ -1,3 +1,5 @@
+// lib/features/projects/view/project_list_page.dart
+
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
@@ -5,6 +7,8 @@ import 'package:airdrop_flow/features/projects/view/project_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/widgets/error_display.dart';
 
 class ProjectListPage extends ConsumerWidget {
   const ProjectListPage({super.key});
@@ -40,7 +44,12 @@ class ProjectListPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        // --- PERUBAHAN DI SINI ---
+        // Mengganti tampilan error lama dengan widget baru yang konsisten.
+        error: (err, stack) => ErrorDisplay(
+          errorMessage: err.toString(),
+          onRetry: () => ref.invalidate(projectsStreamProvider),
+        ),
       ),
     );
   }
@@ -59,7 +68,7 @@ class ProjectCard extends ConsumerWidget {
       );
     }
   }
-  
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,12 +79,12 @@ class ProjectCard extends ConsumerWidget {
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
-onTap: () => Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => ProjectDetailPage(projectId: project.id),
-  ),
-),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectDetailPage(projectId: project.id),
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -85,7 +94,10 @@ onTap: () => Navigator.push(
                 Expanded(
                   child: Text(
                     project.name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -116,12 +128,16 @@ onTap: () => Navigator.push(
             const SizedBox(height: 12),
             allWalletsAsync.when(
               data: (allWallets) {
-                final usedWallets = allWallets.where((w) => project.associatedWalletIds.contains(w.id)).toList();
+                final usedWallets = allWallets
+                    .where((w) => project.associatedWalletIds.contains(w.id))
+                    .toList();
                 return _buildDetailRow(
                   context,
                   icon: Icons.account_balance_wallet_outlined,
                   label: 'Wallet',
-                  value: usedWallets.isEmpty ? 'Tidak ada' : usedWallets.map((w) => w.walletName).join(', '),
+                  value: usedWallets.isEmpty
+                      ? 'Tidak ada'
+                      : usedWallets.map((w) => w.walletName).join(', '),
                 );
               },
               loading: () => const SizedBox.shrink(),
@@ -130,12 +146,17 @@ onTap: () => Navigator.push(
             const SizedBox(height: 12),
             allSocialsAsync.when(
               data: (allSocials) {
-                final usedSocials = allSocials.where((s) => project.associatedSocialAccountIds.contains(s.id)).toList();
+                final usedSocials = allSocials
+                    .where(
+                        (s) => project.associatedSocialAccountIds.contains(s.id))
+                    .toList();
                 return _buildDetailRow(
                   context,
                   icon: Icons.group_outlined,
                   label: 'Akun',
-                  value: usedSocials.isEmpty ? 'Tidak ada' : usedSocials.map((s) => s.username).join(', '),
+                  value: usedSocials.isEmpty
+                      ? 'Tidak ada'
+                      : usedSocials.map((s) => s.username).join(', '),
                 );
               },
               loading: () => const SizedBox.shrink(),
@@ -147,7 +168,8 @@ onTap: () => Navigator.push(
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, {required IconData icon, required String label, required String value}) {
+  Widget _buildDetailRow(BuildContext context,
+      {required IconData icon, required String label, required String value}) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.white70),
@@ -164,7 +186,11 @@ onTap: () => Navigator.push(
     );
   }
 
-  Widget _buildClickableDetailRow(BuildContext context, {required IconData icon, required String label, required String value, required VoidCallback onTap}) {
+  Widget _buildClickableDetailRow(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required String value,
+      required VoidCallback onTap}) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return InkWell(
       onTap: onTap,
@@ -172,7 +198,9 @@ onTap: () => Navigator.push(
         children: [
           Icon(icon, size: 18, color: primaryColor),
           const SizedBox(width: 8),
-          Text('$label: ', style: TextStyle(fontWeight: FontWeight.w600, color: primaryColor)),
+          Text('$label: ',
+              style:
+                  TextStyle(fontWeight: FontWeight.w600, color: primaryColor)),
           Expanded(
             child: Text(
               value,
@@ -187,8 +215,7 @@ onTap: () => Navigator.push(
       ),
     );
   }
-  
-  // --- FUNGSI YANG DIPERBARUI ---
+
   Widget _buildStatusChip(ProjectStatus status) {
     Color statusColor;
     String statusText = status.name[0].toUpperCase() + status.name.substring(1);
@@ -208,14 +235,14 @@ onTap: () => Navigator.push(
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: statusColor.withAlpha(40), // Latar belakang sangat transparan
+        color: statusColor.withAlpha(40),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: statusColor, width: 1), // Border berwarna
+        border: Border.all(color: statusColor, width: 1),
       ),
       child: Text(
         statusText,
         style: TextStyle(
-          color: statusColor, // Teks berwarna
+          color: statusColor,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),

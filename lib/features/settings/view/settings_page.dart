@@ -1,7 +1,8 @@
+// lib/features/settings/view/settings_page.dart
+
 import 'package:airdrop_flow/features/socials/view/social_management_page.dart';
 import 'package:airdrop_flow/features/wallets/view/wallet_management_page.dart';
-import 'package:airdrop_flow/core/providers/firebase_providers.dart'; // <-- Ganti import ini
-import 'package:airdrop_flow/features/templates/view/template_management_page.dart';
+import 'package:airdrop_flow/core/providers/firebase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,11 +34,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     final securityService = ref.read(securityServiceProvider);
 
-    // Periksa apakah perangkat mendukung biometrik sebelum mengaktifkan
     if (value && !await securityService.canUseBiometrics) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Perangkat tidak mendukung biometrik.'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Perangkat tidak mendukung biometrik.'),
+              backgroundColor: Colors.red),
         );
       }
       return;
@@ -52,7 +54,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan & Manajemen')),
+      // Judul AppBar diubah agar konsisten dengan AppBar dinamis
+      // appBar: AppBar(title: const Text('Pengaturan & Manajemen')),
       body: ListView(
         children: [
           ListTile(
@@ -81,24 +84,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.file_copy_outlined),
-            title: const Text('Manajemen Template Tugas'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TemplateManagementPage(),
-                ),
-              );
-            },
-          ),
+          // --- ListTile untuk Manajemen Template Dihapus dari sini ---
           const Divider(),
-          // Tombol Switch untuk Kunci Aplikasi
           SwitchListTile(
             title: const Text('Kunci Aplikasi'),
-            subtitle: const Text('Gunakan sidik jari / Face ID saat membuka aplikasi.'),
+            subtitle: const Text(
+                'Gunakan sidik jari / Face ID saat membuka aplikasi.'),
             value: _isSecurityEnabled,
             onChanged: _toggleSecurity,
           ),
@@ -107,7 +98,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             leading: Icon(Icons.logout, color: Colors.red.shade400),
             title: const Text('Logout'),
             onTap: () async {
-              // `authServiceProvider` kini diimpor dari firebase_providers.dart
               await ref.read(authServiceProvider).signOut();
             },
           ),

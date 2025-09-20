@@ -1,10 +1,14 @@
+// lib/features/discover/view/discover_page.dart
+
 import 'package:airdrop_flow/core/models/airdrop_opportunity_model.dart';
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
-import 'package:airdrop_flow/core/widgets/glass_container.dart'; // <-- 1. Impor GlassContainer
+import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/discover/providers/discover_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// --- IMPORT BARU ---
+import 'package:airdrop_flow/core/widgets/error_display.dart';
 
 class DiscoverPage extends ConsumerWidget {
   const DiscoverPage({super.key});
@@ -14,9 +18,7 @@ class DiscoverPage extends ConsumerWidget {
     final filteredAirdropsAsync = ref.watch(filteredAirdropsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Latar belakang transparan
-      // Hapus AppBar agar menyatu dengan MainScaffold
-      // appBar: AppBar(title: const Text('Discover Airdrops')),
+      backgroundColor: Colors.transparent,
       body: Column(
         children: [
           Padding(
@@ -46,7 +48,7 @@ class DiscoverPage extends ConsumerWidget {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0), // Padding tambahan
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   itemCount: airdrops.length,
                   itemBuilder: (context, index) {
                     final airdrop = airdrops[index];
@@ -55,36 +57,12 @@ class DiscoverPage extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
+              // --- PERUBAHAN DI SINI ---
+              // Mengganti tampilan error lama dengan widget baru
               error: (err, stack) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 50),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Gagal Memuat Data',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          err.toString().replaceAll('Exception: ', ''),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            ref.invalidate(airdropOpportunitiesProvider);
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Coba Lagi'),
-                        )
-                      ],
-                    ),
-                  ),
+                return ErrorDisplay(
+                  errorMessage: err.toString(),
+                  onRetry: () => ref.invalidate(airdropOpportunitiesProvider),
                 );
               },
             ),
@@ -121,7 +99,6 @@ class AirdropOpportunityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 2. GANTI Card MENJADI GlassContainer
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       padding: const EdgeInsets.all(12.0),

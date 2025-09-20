@@ -4,7 +4,6 @@ import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
-import 'package:airdrop_flow/core/models/task_template_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 // Import model yang baru kita buat
@@ -140,40 +139,7 @@ class FirestoreService {
       return snapshot.docs.map((doc) => SocialAccount.fromFirestore(doc)).toList();
     });
   }
-  
-  Future<void> addTaskTemplate(TaskTemplate template) async {
-    await _userCollection('task_templates').add(template.toJson());
-  }
 
-  Future<void> updateTaskTemplate(TaskTemplate template) async {
-    await _userCollection('task_templates').doc(template.id).update(template.toJson());
-  }
-
-  Future<void> deleteTaskTemplate(String templateId) async {
-    await _userCollection('task_templates').doc(templateId).delete();
-  }
-
-  Stream<List<TaskTemplate>> getTaskTemplates() {
-    if (_userId == null) return Stream.value([]);
-    return _userCollection('task_templates').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => TaskTemplate.fromFirestore(doc)).toList();
-    });
-  }
-
-  Future<void> applyTemplateToProject({
-    required String projectId,
-    required TaskTemplate template,
-  }) async {
-    final projectTasksRef = _userCollection('projects').doc(projectId).collection('tasks');
-    final writeBatch = _db.batch();
-    for (final templateTask in template.tasks) {
-      final newTask = Task(id: '', projectId: projectId, name: templateTask.name, taskUrl: templateTask.taskUrl, category: templateTask.category);
-      final newDocRef = projectTasksRef.doc();
-      writeBatch.set(newDocRef, newTask.toJson());
-    }
-    await writeBatch.commit();
-  }
-  
   // --- BARU: Metode untuk Notifikasi ---
 
   /// Menambahkan notifikasi baru untuk pengguna.

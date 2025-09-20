@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:airdrop_flow/core/widgets/error_display.dart';
 
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final String projectId;
@@ -41,13 +42,15 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     }).toList();
   }
 
-  void _confirmDeleteProject(BuildContext context, WidgetRef ref, Project project) {
+  void _confirmDeleteProject(
+      BuildContext context, WidgetRef ref, Project project) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Konfirmasi Hapus'),
-          content: Text('Apakah Anda yakin ingin menghapus proyek "${project.name}"? Semua tugas di dalamnya juga akan terhapus.'),
+          content: Text(
+              'Apakah Anda yakin ingin menghapus proyek "${project.name}"? Semua tugas di dalamnya juga akan terhapus.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal'),
@@ -56,7 +59,9 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             TextButton(
               child: Text('Hapus', style: TextStyle(color: Colors.red.shade400)),
               onPressed: () async {
-                await ref.read(firestoreServiceProvider).deleteProject(project.id);
+                await ref
+                    .read(firestoreServiceProvider)
+                    .deleteProject(project.id);
                 if (context.mounted) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 }
@@ -68,45 +73,8 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     );
   }
 
-  void _showApplyTemplateDialog(BuildContext context, WidgetRef ref, String projectId) {
-    final templatesAsync = ref.watch(taskTemplatesStreamProvider);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Terapkan Template Tugas'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: templatesAsync.when(
-              data: (templates) {
-                if (templates.isEmpty) return const Text('Anda belum memiliki template.');
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: templates.length,
-                  itemBuilder: (context, index) {
-                    final template = templates[index];
-                    return ListTile(
-                      title: Text(template.name),
-                      subtitle: Text('${template.tasks.length} tugas'),
-                      onTap: () async {
-                        await ref.read(firestoreServiceProvider).applyTemplateToProject(projectId: projectId, template: template);
-                        if (context.mounted) Navigator.of(context).pop();
-                      },
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, s) => const Text('Gagal memuat template.'),
-            ),
-          ),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal'))],
-        );
-      },
-    );
-  }
-
-  void _showAddTaskDialog(BuildContext context, WidgetRef ref, String projectId) {
+  void _showAddTaskDialog(
+      BuildContext context, WidgetRef ref, String projectId) {
     final nameController = TextEditingController();
     TaskCategory selectedCategory = TaskCategory.OneTime;
     showDialog(
@@ -119,22 +87,29 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Tugas')),
+                  TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Nama Tugas')),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<TaskCategory>(
                     value: selectedCategory,
                     items: TaskCategory.values.map((TaskCategory category) {
-                      return DropdownMenuItem<TaskCategory>(value: category, child: Text(category.name));
+                      return DropdownMenuItem<TaskCategory>(
+                          value: category, child: Text(category.name));
                     }).toList(),
                     onChanged: (newValue) {
-                      if (newValue != null) setState(() => selectedCategory = newValue);
+                      if (newValue != null) {
+                        setState(() => selectedCategory = newValue);
+                      }
                     },
                     decoration: const InputDecoration(labelText: 'Kategori'),
                   ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+                TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Batal')),
                 ElevatedButton(
                   onPressed: () {
                     if (nameController.text.isNotEmpty) {
@@ -163,8 +138,9 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     return projectAsync.when(
       data: (project) {
         final projectTasksAsync = ref.watch(projectTasksProvider(project.id));
-        final allTasksForCalendarAsync = ref.watch(tasksStreamProvider(project.id));
-        
+        final allTasksForCalendarAsync =
+            ref.watch(tasksStreamProvider(project.id));
+
         final colorScheme = Theme.of(context).colorScheme;
 
         return Scaffold(
@@ -182,13 +158,11 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AddEditProjectPage(project: project))),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => AddEditProjectPage(project: project))),
                 tooltip: 'Edit Proyek',
-              ),
-              IconButton(
-                icon: const Icon(Icons.library_add_check_outlined),
-                onPressed: () => _showApplyTemplateDialog(context, ref, project.id),
-                tooltip: 'Terapkan Template',
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
@@ -200,59 +174,63 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
           body: projectTasksAsync.when(
             data: (taskData) {
               final selectedDay = _selectedDay;
-              
+
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ProjectInfoSection(project: project),
-                    
                     if (taskData.today.isNotEmpty)
                       _TaskListSection(
                         title: 'Tugas Hari Ini',
                         tasks: taskData.today,
                         isEnabled: true,
                       ),
-                    
                     if (taskData.oneTime.isNotEmpty)
-                       _TaskListSection(
+                      _TaskListSection(
                         title: 'Tugas Sekali Selesai',
                         tasks: taskData.oneTime,
                         isEnabled: true,
                       ),
-
                     if (taskData.tomorrow.isNotEmpty)
-                       _TaskListSection(
+                      _TaskListSection(
                         title: 'Akan Datang Besok',
                         tasks: taskData.tomorrow,
                         isEnabled: false,
                       ),
-
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text('Kalender Aktivitas', style: Theme.of(context).textTheme.titleLarge),
+                      child: Text('Kalender Aktivitas',
+                          style: Theme.of(context).textTheme.titleLarge),
                     ),
                     const SizedBox(height: 8),
 
+                    // --- PERUBAHAN ERROR HANDLING #2 ---
                     allTasksForCalendarAsync.when(
                       data: (allTasks) {
-                        final completedTasksOnSelectedDay = selectedDay != null ? _getTasksForDay(selectedDay, allTasks) : <Task>[];
+                        final completedTasksOnSelectedDay = selectedDay != null
+                            ? _getTasksForDay(selectedDay, allTasks)
+                            : <Task>[];
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             GlassContainer(
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
-                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.fromLTRB(8, 0, 8, 8),
                               child: TableCalendar<Task>(
                                 calendarFormat: CalendarFormat.week,
                                 firstDay: DateTime.utc(2022, 1, 1),
                                 lastDay: DateTime.utc(2030, 12, 31),
                                 focusedDay: _focusedDay,
-                                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                                selectedDayPredicate: (day) =>
+                                    isSameDay(_selectedDay, day),
                                 startingDayOfWeek: StartingDayOfWeek.monday,
-                                eventLoader: (day) => _getTasksForDay(day, allTasks),
+                                eventLoader: (day) =>
+                                    _getTasksForDay(day, allTasks),
                                 onDaySelected: (selectedDay, focusedDay) {
                                   if (!isSameDay(_selectedDay, selectedDay)) {
                                     setState(() {
@@ -266,39 +244,61 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                                   formatButtonVisible: false,
                                 ),
                                 calendarStyle: CalendarStyle(
-                                  selectedDecoration: BoxDecoration(color: colorScheme.primary, shape: BoxShape.circle),
-                                  todayDecoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                                  selectedDecoration: BoxDecoration(
+                                      color: colorScheme.primary,
+                                      shape: BoxShape.circle),
+                                  todayDecoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle),
                                 ),
                                 calendarBuilders: CalendarBuilders(
                                   markerBuilder: (context, date, events) {
                                     if (events.isNotEmpty) {
-                                      return Positioned(right: 4, top: 4, child: Container(
-                                        decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.secondary.withOpacity(0.8)),
-                                        width: 7, height: 7,
-                                      ));
+                                      return Positioned(
+                                          right: 4,
+                                          top: 4,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: colorScheme.secondary
+                                                    .withOpacity(0.8)),
+                                            width: 7,
+                                            height: 7,
+                                          ));
                                     }
                                     return null;
                                   },
                                 ),
                               ),
                             ),
-                            if (selectedDay != null && completedTasksOnSelectedDay.isNotEmpty) ...[
+                            if (selectedDay != null &&
+                                completedTasksOnSelectedDay.isNotEmpty) ...[
                               const SizedBox(height: 16),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                child: Text('Aktivitas pada ${DateFormat.yMMMMd('id_ID').format(selectedDay)}', style: Theme.of(context).textTheme.titleLarge),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
+                                child: Text(
+                                    'Aktivitas pada ${DateFormat.yMMMMd('id_ID').format(selectedDay)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge),
                               ),
                               const SizedBox(height: 8),
                               GlassContainer(
-                                margin: const EdgeInsets.symmetric(horizontal: 16),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 padding: EdgeInsets.zero,
                                 child: Column(
                                   children: completedTasksOnSelectedDay
                                       .map((task) => ListTile(
-                                            leading: const Icon(Icons.check_circle, color: Colors.green),
+                                            leading: const Icon(Icons.check_circle,
+                                                color: Colors.green),
                                             title: Text(task.name),
-                                            subtitle: task.lastCompletedTimestamp != null
-                                                ? Text('Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
+                                            subtitle: task
+                                                        .lastCompletedTimestamp !=
+                                                    null
+                                                ? Text(
+                                                    'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
                                                 : null,
                                           ))
                                       .toList(),
@@ -308,8 +308,12 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                           ],
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (err, stack) => Center(child: Text('Gagal memuat riwayat: $err')),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => ErrorDisplay(
+                        errorMessage: err.toString(),
+                        onRetry: () => ref.invalidate(tasksStreamProvider(project.id)),
+                      ),
                     ),
                     const SizedBox(height: 80),
                   ],
@@ -317,7 +321,10 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(child: Text('Gagal memuat tugas: $err')),
+            // --- PERUBAHAN ERROR HANDLING #3 ---
+            error: (err, stack) => ErrorDisplay(
+                errorMessage: 'Gagal memuat daftar tugas.\n${err.toString()}',
+                onRetry: () => ref.invalidate(projectTasksProvider(project.id))),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showAddTaskDialog(context, ref, project.id),
@@ -326,8 +333,19 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
           ),
         );
       },
-      loading: () => Scaffold(backgroundColor: Colors.transparent, appBar: AppBar(), body: const Center(child: CircularProgressIndicator())),
-      error: (err, stack) => Scaffold(backgroundColor: Colors.transparent, appBar: AppBar(title: const Text('Error')), body: Center(child: Text('Gagal memuat proyek: $err'))),
+      loading: () => Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(),
+          body: const Center(child: CircularProgressIndicator())),
+      // --- PERUBAHAN ERROR HANDLING #1 ---
+      error: (err, stack) => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Error')),
+        body: ErrorDisplay(
+          errorMessage: 'Gagal memuat proyek.\n${err.toString()}',
+          onRetry: () => ref.invalidate(singleProjectStreamProvider(widget.projectId)),
+        ),
+      ),
     );
   }
 }
@@ -366,7 +384,9 @@ class _TaskListSection extends ConsumerWidget {
                 key: Key(task.id),
                 direction: DismissDirection.endToStart,
                 onDismissed: (_) {
-                  ref.read(firestoreServiceProvider).deleteTask(projectId: task.projectId, taskId: task.id);
+                  ref
+                      .read(firestoreServiceProvider)
+                      .deleteTask(projectId: task.projectId, taskId: task.id);
                 },
                 background: Container(
                   color: Colors.red.shade700,
@@ -392,7 +412,8 @@ class TaskTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isCompleted = isEnabled ? task.isCompleted : false;
-    final Color textColor = isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
+    final Color textColor =
+        isEnabled ? (isCompleted ? Colors.grey : Colors.white) : Colors.grey;
     final nextResetDate = task.lastCompletedTimestamp?.add(const Duration(days: 1));
 
     return Opacity(
@@ -401,7 +422,8 @@ class TaskTile extends ConsumerWidget {
         title: Text(
           task.name,
           style: TextStyle(
-            decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+            decoration:
+                isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
             color: textColor,
           ),
         ),
@@ -412,7 +434,10 @@ class TaskTile extends ConsumerWidget {
               const SizedBox(width: 8),
               Text(
                 "(${DateFormat('d MMM', 'id_ID').format(nextResetDate)})",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.amber),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.amber),
               )
             ]
           ],
@@ -434,8 +459,6 @@ class TaskTile extends ConsumerWidget {
   }
 }
 
-// --- PERBAIKAN UTAMA DI SINI ---
-// Mengubah 'StatelessWidget' menjadi 'ConsumerWidget'
 class _ProjectInfoSection extends ConsumerWidget {
   final Project project;
   const _ProjectInfoSection({required this.project});
@@ -486,8 +509,7 @@ class _ProjectInfoSection extends ConsumerWidget {
                           icon: Icons.lan_outlined,
                           value: project.blockchainNetwork),
                     _DetailRow(
-                        icon: Icons.flag_outlined,
-                        value: project.status.name),
+                        icon: Icons.flag_outlined, value: project.status.name),
                   ],
                 ),
               ),
@@ -498,25 +520,39 @@ class _ProjectInfoSection extends ConsumerWidget {
                   children: [
                     allWalletsAsync.when(
                       data: (wallets) {
-                        final usedWallets = wallets.where((w) => project.associatedWalletIds.contains(w.id)).toList();
+                        final usedWallets = wallets
+                            .where(
+                                (w) => project.associatedWalletIds.contains(w.id))
+                            .toList();
                         return _AssociatedItemsList(
                           icon: Icons.account_balance_wallet_outlined,
-                          items: usedWallets.map((w) => '${w.walletName} (${_shortenAddress(w.publicAddress)})').toList(),
+                          items: usedWallets
+                              .map((w) =>
+                                  '${w.walletName} (${_shortenAddress(w.publicAddress)})')
+                              .toList(),
                         );
                       },
-                      loading: () => const _DetailRow(icon: Icons.account_balance_wallet_outlined, value: 'Memuat...'),
+                      loading: () => const _DetailRow(
+                          icon: Icons.account_balance_wallet_outlined,
+                          value: 'Memuat...'),
                       error: (e, s) => const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 12),
                     allSocialsAsync.when(
                       data: (socials) {
-                        final usedSocials = socials.where((s) => project.associatedSocialAccountIds.contains(s.id)).toList();
+                        final usedSocials = socials
+                            .where((s) =>
+                                project.associatedSocialAccountIds.contains(s.id))
+                            .toList();
                         return _AssociatedItemsList(
                           icon: Icons.group_outlined,
-                          items: usedSocials.map((s) => '${s.username} (${s.platform.name})').toList(),
+                          items: usedSocials
+                              .map((s) => '${s.username} (${s.platform.name})')
+                              .toList(),
                         );
                       },
-                      loading: () => const _DetailRow(icon: Icons.group_outlined, value: 'Memuat...'),
+                      loading: () => const _DetailRow(
+                          icon: Icons.group_outlined, value: 'Memuat...'),
                       error: (e, s) => const SizedBox.shrink(),
                     ),
                   ],
@@ -526,7 +562,8 @@ class _ProjectInfoSection extends ConsumerWidget {
           ),
           if (project.notes.isNotEmpty) ...[
             const Divider(height: 24),
-            Text('Catatan & Strategi', style: Theme.of(context).textTheme.titleMedium),
+            Text('Catatan & Strategi',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -535,7 +572,8 @@ class _ProjectInfoSection extends ConsumerWidget {
                 color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(project.notes, style: Theme.of(context).textTheme.bodyMedium),
+              child: Text(project.notes,
+                  style: Theme.of(context).textTheme.bodyMedium),
             ),
           ],
         ],
@@ -544,7 +582,6 @@ class _ProjectInfoSection extends ConsumerWidget {
   }
 }
 
-// Widget internal baru untuk merapikan tampilan daftar wallet/akun
 class _AssociatedItemsList extends StatelessWidget {
   const _AssociatedItemsList({required this.icon, required this.items});
   final IconData icon;
@@ -557,7 +594,8 @@ class _AssociatedItemsList extends StatelessWidget {
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: items.map((item) => _DetailRow(icon: icon, value: item)).toList(),
+      children:
+          items.map((item) => _DetailRow(icon: icon, value: item)).toList(),
     );
   }
 }
@@ -578,7 +616,7 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
@@ -586,7 +624,11 @@ class _DetailRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6.0),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: isUrl ? colorScheme.primary : colorScheme.onSurfaceVariant),
+            Icon(icon,
+                size: 18,
+                color: isUrl
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
