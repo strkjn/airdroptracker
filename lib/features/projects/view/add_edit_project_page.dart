@@ -1,7 +1,6 @@
-// lib/features/projects/view/add_edit_project_page.dart
-
 import 'package:airdrop_flow/core/models/project_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/app_background.dart'; // <-- IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,9 +51,7 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
     super.dispose();
   }
 
-  // --- PERUBAHAN UTAMA ADA DI FUNGSI INI ---
   void _submitForm() {
-    // Memeriksa validitas form sebelum melanjutkan
     if (_formKey.currentState!.validate()) {
       final firestoreService = ref.read(firestoreServiceProvider);
       final isEditing = widget.project != null;
@@ -70,22 +67,18 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
         associatedSocialAccountIds: _selectedSocialAccountIds.toList(),
       );
 
-      // Menjalankan operasi database
       if (isEditing) {
         firestoreService.updateProject(projectData);
       } else {
         firestoreService.addProject(projectData);
       }
 
-      // Menyiapkan pesan sukses yang sesuai
       final successMessage = isEditing
           ? 'Proyek berhasil diperbarui!'
           : 'Proyek berhasil ditambahkan!';
 
-      // Menutup halaman saat ini
       Navigator.of(context).pop();
 
-      // Menampilkan SnackBar di halaman sebelumnya untuk konfirmasi visual
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(successMessage),
@@ -97,71 +90,76 @@ class _AddEditProjectPageState extends ConsumerState<AddEditProjectPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title:
-            Text(widget.project == null ? 'Tambah Proyek Baru' : 'Edit Proyek'),
-        actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _submitForm),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nama Proyek'),
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Nama proyek tidak boleh kosong'
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _websiteController,
-                decoration:
-                    const InputDecoration(labelText: 'URL Website (Opsional)'),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<ProjectStatus>(
-                value: _selectedStatus, // Menggunakan value, bukan initialValue
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: ProjectStatus.values.map((status) {
-                  return DropdownMenuItem(
-                      value: status, child: Text(status.name));
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => _selectedStatus = value);
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _networkController,
-                decoration: const InputDecoration(
-                    labelText: 'Jaringan Blockchain (misal: Ethereum, Solana)'),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                    labelText: 'Catatan & Strategi (Opsional)',
-                    alignLabelWithHint: true),
-                maxLines: 5,
-                keyboardType: TextInputType.multiline,
-              ),
-              const Divider(height: 32),
-              Text('Tautkan Wallet',
-                  style: Theme.of(context).textTheme.titleMedium),
-              _buildWalletsSelector(),
-              const SizedBox(height: 16),
-              Text('Tautkan Akun Sosial',
-                  style: Theme.of(context).textTheme.titleMedium),
-              _buildSocialsSelector(),
-            ],
+    return AppBackground( // <-- WIDGET DITAMBAHKAN
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // <-- MODIFIKASI
+        appBar: AppBar(
+          title:
+              Text(widget.project == null ? 'Tambah Proyek Baru' : 'Edit Proyek'),
+          actions: [
+            IconButton(icon: const Icon(Icons.save), onPressed: _submitForm),
+          ],
+          backgroundColor: Colors.transparent, // <-- Tambahan
+          elevation: 0, // <-- Tambahan
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Nama Proyek'),
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Nama proyek tidak boleh kosong'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _websiteController,
+                  decoration:
+                      const InputDecoration(labelText: 'URL Website (Opsional)'),
+                  keyboardType: TextInputType.url,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<ProjectStatus>(
+                  value: _selectedStatus,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: ProjectStatus.values.map((status) {
+                    return DropdownMenuItem(
+                        value: status, child: Text(status.name));
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedStatus = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _networkController,
+                  decoration: const InputDecoration(
+                      labelText: 'Jaringan Blockchain (misal: Ethereum, Solana)'),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _notesController,
+                  decoration: const InputDecoration(
+                      labelText: 'Catatan & Strategi (Opsional)',
+                      alignLabelWithHint: true),
+                  maxLines: 5,
+                  keyboardType: TextInputType.multiline,
+                ),
+                const Divider(height: 32),
+                Text('Tautkan Wallet',
+                    style: Theme.of(context).textTheme.titleMedium),
+                _buildWalletsSelector(),
+                const SizedBox(height: 16),
+                Text('Tautkan Akun Sosial',
+                    style: Theme.of(context).textTheme.titleMedium),
+                _buildSocialsSelector(),
+              ],
+            ),
           ),
         ),
       ),

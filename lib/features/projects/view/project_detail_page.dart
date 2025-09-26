@@ -7,6 +7,7 @@ import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/models/task_model.dart';
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/app_background.dart'; // <-- IMPORT BARU
 import 'package:airdrop_flow/core/widgets/error_display.dart';
 import 'package:airdrop_flow/core/widgets/glass_container.dart';
 import 'package:airdrop_flow/features/projects/providers/project_providers.dart';
@@ -16,7 +17,6 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
-// --- IMPORT BARU ---
 import 'package:airdrop_flow/core/app_router.dart';
 import '../providers/project_detail_providers.dart';
 
@@ -65,7 +65,6 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 await ref
                     .read(firestoreServiceProvider)
                     .deleteProject(project.id);
-                // --- PERBAIKAN DI SINI ---
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
             ),
@@ -126,217 +125,230 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     final projectAsync =
         ref.watch(singleProjectStreamProvider(widget.projectId));
 
-    return projectAsync.when(
-      data: (project) {
-        final projectTasksAsync = ref.watch(projectTasksProvider(project.id));
-        final allTasksForCalendarAsync =
-            ref.watch(tasksStreamProvider(project.id));
+    // <-- WIDGET DITAMBAHKAN DI SINI -->
+    // Membungkus .when() agar background tetap muncul saat loading/error
+    return AppBackground(
+      child: projectAsync.when(
+        data: (project) {
+          final projectTasksAsync = ref.watch(projectTasksProvider(project.id));
+          final allTasksForCalendarAsync =
+              ref.watch(tasksStreamProvider(project.id));
 
-        final colorScheme = Theme.of(context).colorScheme;
+          final colorScheme = Theme.of(context).colorScheme;
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.black.withOpacity(0.3),
-            elevation: 0,
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-            title: Text(project.name),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () {
-                  AppRouter.goToEditProject(context, project);
-                },
-                tooltip: 'Edit Proyek',
-              ),
-              IconButton(
-                icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                onPressed: () => _confirmDeleteProject(context, ref, project),
-                tooltip: 'Hapus Proyek',
-              ),
-            ],
-          ),
-          body: projectTasksAsync.when(
-            data: (taskData) {
-              final selectedDay = _selectedDay;
-
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ProjectInfoSection(project: project),
-                    if (taskData.today.isNotEmpty)
-                      _TaskListSection(
-                        title: 'Tugas Hari Ini',
-                        tasks: taskData.today,
-                        isEnabled: true,
-                      ),
-                    if (taskData.oneTime.isNotEmpty)
-                      _TaskListSection(
-                        title: 'Tugas Sekali Selesai',
-                        tasks: taskData.oneTime,
-                        isEnabled: true,
-                      ),
-                    if (taskData.tomorrow.isNotEmpty)
-                      _TaskListSection(
-                        title: 'Akan Datang Besok',
-                        tasks: taskData.tomorrow,
-                        isEnabled: false,
-                      ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text('Kalender Aktivitas',
-                          style: Theme.of(context).textTheme.titleLarge),
-                    ),
-                    const SizedBox(height: 8),
-                    allTasksForCalendarAsync.when(
-                      data: (allTasks) {
-                        final completedTasksOnSelectedDay = selectedDay != null
-                            ? _getTasksForDay(selectedDay, allTasks)
-                            : <Task>[];
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GlassContainer(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                              child: TableCalendar<Task>(
-                                calendarFormat: CalendarFormat.week,
-                                firstDay: DateTime.utc(2022, 1, 1),
-                                lastDay: DateTime.utc(2030, 12, 31),
-                                focusedDay: _focusedDay,
-                                selectedDayPredicate: (day) =>
-                                    isSameDay(_selectedDay, day),
-                                startingDayOfWeek: StartingDayOfWeek.monday,
-                                eventLoader: (day) =>
-                                    _getTasksForDay(day, allTasks),
-                                onDaySelected: (selectedDay, focusedDay) {
-                                  if (!isSameDay(_selectedDay, selectedDay)) {
-                                    setState(() {
-                                      _selectedDay = selectedDay;
-                                      _focusedDay = focusedDay;
-                                    });
-                                  }
-                                },
-                                headerStyle: const HeaderStyle(
-                                  titleCentered: true,
-                                  formatButtonVisible: false,
-                                ),
-                                calendarStyle: CalendarStyle(
-                                  selectedDecoration: BoxDecoration(
-                                      color: colorScheme.primary,
-                                      shape: BoxShape.circle),
-                                  todayDecoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      shape: BoxShape.circle),
-                                ),
-                                calendarBuilders: CalendarBuilders(
-                                  markerBuilder: (context, date, events) {
-                                    if (events.isNotEmpty) {
-                                      return Positioned(
-                                          right: 4,
-                                          top: 4,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: colorScheme.secondary
-                                                    .withOpacity(0.8)),
-                                            width: 7,
-                                            height: 7,
-                                          ));
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ),
-                            if (selectedDay != null &&
-                                completedTasksOnSelectedDay.isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0),
-                                child: Text(
-                                    'Aktivitas pada ${DateFormat.yMMMMd('id_ID').format(selectedDay)}',
-                                    style:
-                                        Theme.of(context).textTheme.titleLarge),
-                              ),
-                              const SizedBox(height: 8),
-                              GlassContainer(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 16),
-                                padding: EdgeInsets.zero,
-                                child: Column(
-                                  children: completedTasksOnSelectedDay
-                                      .map((task) => ListTile(
-                                            leading: const Icon(
-                                                Icons.check_circle,
-                                                color: Colors.green),
-                                            title: Text(task.name),
-                                            subtitle: task
-                                                        .lastCompletedTimestamp !=
-                                                    null
-                                                ? Text(
-                                                    'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
-                                                : null,
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ],
-                          ],
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (err, stack) => ErrorDisplay(
-                        errorMessage: err.toString(),
-                        onRetry: () =>
-                            ref.invalidate(tasksStreamProvider(project.id)),
-                      ),
-                    ),
-                    const SizedBox(height: 80),
-                  ],
+          return Scaffold(
+            // <-- MODIFIKASI: Latar belakang dibuat transparan -->
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.black.withOpacity(0.3),
+              elevation: 0,
+              flexibleSpace: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(color: Colors.transparent),
                 ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => ErrorDisplay(
-                errorMessage: 'Gagal memuat daftar tugas.\n${err.toString()}',
-                onRetry: () => ref.invalidate(projectTasksProvider(project.id))),
+              ),
+              title: Text(project.name),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () {
+                    AppRouter.goToEditProject(context, project);
+                  },
+                  tooltip: 'Edit Proyek',
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                  onPressed: () => _confirmDeleteProject(context, ref, project),
+                  tooltip: 'Hapus Proyek',
+                ),
+              ],
+            ),
+            body: projectTasksAsync.when(
+              data: (taskData) {
+                final selectedDay = _selectedDay;
+
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProjectInfoSection(project: project),
+                      if (taskData.today.isNotEmpty)
+                        _TaskListSection(
+                          title: 'Tugas Hari Ini',
+                          tasks: taskData.today,
+                          isEnabled: true,
+                        ),
+                      if (taskData.oneTime.isNotEmpty)
+                        _TaskListSection(
+                          title: 'Tugas Sekali Selesai',
+                          tasks: taskData.oneTime,
+                          isEnabled: true,
+                        ),
+                      if (taskData.tomorrow.isNotEmpty)
+                        _TaskListSection(
+                          title: 'Akan Datang Besok',
+                          tasks: taskData.tomorrow,
+                          isEnabled: false,
+                        ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text('Kalender Aktivitas',
+                            style: Theme.of(context).textTheme.titleLarge),
+                      ),
+                      const SizedBox(height: 8),
+                      allTasksForCalendarAsync.when(
+                        data: (allTasks) {
+                          final completedTasksOnSelectedDay = selectedDay != null
+                              ? _getTasksForDay(selectedDay, allTasks)
+                              : <Task>[];
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              GlassContainer(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                child: TableCalendar<Task>(
+                                  calendarFormat: CalendarFormat.week,
+                                  firstDay: DateTime.utc(2022, 1, 1),
+                                  lastDay: DateTime.utc(2030, 12, 31),
+                                  focusedDay: _focusedDay,
+                                  selectedDayPredicate: (day) =>
+                                      isSameDay(_selectedDay, day),
+                                  startingDayOfWeek: StartingDayOfWeek.monday,
+                                  eventLoader: (day) =>
+                                      _getTasksForDay(day, allTasks),
+                                  onDaySelected: (selectedDay, focusedDay) {
+                                    if (!isSameDay(_selectedDay, selectedDay)) {
+                                      setState(() {
+                                        _selectedDay = selectedDay;
+                                        _focusedDay = focusedDay;
+                                      });
+                                    }
+                                  },
+                                  headerStyle: const HeaderStyle(
+                                    titleCentered: true,
+                                    formatButtonVisible: false,
+                                  ),
+                                  calendarStyle: CalendarStyle(
+                                    selectedDecoration: BoxDecoration(
+                                        color: colorScheme.primary,
+                                        shape: BoxShape.circle),
+                                    todayDecoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle),
+                                  ),
+                                  calendarBuilders: CalendarBuilders(
+                                    markerBuilder: (context, date, events) {
+                                      if (events.isNotEmpty) {
+                                        return Positioned(
+                                            right: 4,
+                                            top: 4,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: colorScheme.secondary
+                                                      .withOpacity(0.8)),
+                                              width: 7,
+                                              height: 7,
+                                            ));
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ),
+                              if (selectedDay != null &&
+                                  completedTasksOnSelectedDay.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0),
+                                  child: Text(
+                                      'Aktivitas pada ${DateFormat.yMMMMd('id_ID').format(selectedDay)}',
+                                      style:
+                                          Theme.of(context).textTheme.titleLarge),
+                                ),
+                                const SizedBox(height: 8),
+                                GlassContainer(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  padding: EdgeInsets.zero,
+                                  child: Column(
+                                    children: completedTasksOnSelectedDay
+                                        .map((task) => ListTile(
+                                              leading: const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.green),
+                                              title: Text(task.name),
+                                              subtitle: task
+                                                          .lastCompletedTimestamp !=
+                                                      null
+                                                  ? Text(
+                                                      'Selesai pada ${DateFormat.Hm().format(task.lastCompletedTimestamp!)}')
+                                                  : null,
+                                            ))
+                                        .toList(),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (err, stack) => ErrorDisplay(
+                          errorMessage: err.toString(),
+                          onRetry: () =>
+                              ref.invalidate(tasksStreamProvider(project.id)),
+                        ),
+                      ),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => ErrorDisplay(
+                  errorMessage: 'Gagal memuat daftar tugas.\n${err.toString()}',
+                  onRetry: () => ref.invalidate(projectTasksProvider(project.id))),
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () => _showAddTaskDialog(context, ref, project.id),
+              tooltip: 'Tambah Tugas Manual',
+              child: const Icon(Icons.add_task),
+            ),
+          );
+        },
+        loading: () => Scaffold(
+            backgroundColor: Colors.transparent, // <-- MODIFIKASI
+            appBar: AppBar(
+              backgroundColor: Colors.transparent, // <-- MODIFIKASI
+              elevation: 0,
+            ),
+            body: const Center(child: CircularProgressIndicator())),
+        error: (err, stack) => Scaffold(
+          backgroundColor: Colors.transparent, // <-- MODIFIKASI
+          appBar: AppBar(
+            title: const Text('Error'),
+            backgroundColor: Colors.transparent, // <-- MODIFIKASI
+            elevation: 0,
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _showAddTaskDialog(context, ref, project.id),
-            tooltip: 'Tambah Tugas Manual',
-            child: const Icon(Icons.add_task),
+          body: ErrorDisplay(
+            errorMessage: 'Gagal memuat proyek.\n${err.toString()}',
+            onRetry: () =>
+                ref.invalidate(singleProjectStreamProvider(widget.projectId)),
           ),
-        );
-      },
-      loading: () => Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(),
-          body: const Center(child: CircularProgressIndicator())),
-      error: (err, stack) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Error')),
-        body: ErrorDisplay(
-          errorMessage: 'Gagal memuat proyek.\n${err.toString()}',
-          onRetry: () =>
-              ref.invalidate(singleProjectStreamProvider(widget.projectId)),
         ),
       ),
     );
   }
 }
 
+// ... (Sisa kode widget _TaskListSection, TaskTile, dll. tidak ada perubahan)
 class _TaskListSection extends ConsumerWidget {
   const _TaskListSection({
     required this.title,

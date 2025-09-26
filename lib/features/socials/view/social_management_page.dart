@@ -1,7 +1,6 @@
-// lib/features/socials/view/social_management_page.dart
-
 import 'package:airdrop_flow/core/models/social_account_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/app_background.dart'; // <-- IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
@@ -13,52 +12,58 @@ class SocialManagementPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final socialsAsyncValue = ref.watch(socialAccountsStreamProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Manajemen Akun Sosial')),
-      body: socialsAsyncValue.when(
-        data: (accounts) {
-          if (accounts.isEmpty) {
-            return const Center(
-              child: Text('Belum ada akun sosial yang ditambahkan.'),
-            );
-          }
-          return ListView.builder(
-            itemCount: accounts.length,
-            itemBuilder: (context, index) {
-              final account = accounts[index];
-              return ListTile(
-                leading: Icon(_getPlatformIcon(account.platform)),
-                title: Text(account.username),
-                subtitle: Text(account.platform.name),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                  onPressed: () {
-                    ref
-                        .read(firestoreServiceProvider)
-                        .deleteSocialAccount(account.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Akun "${account.username}" dihapus.',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        backgroundColor: Colors.red.shade700,
-                        // --- PERBAIKAN DI SINI ---
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                ),
+    return AppBackground( // <-- WIDGET DITAMBAHKAN
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // <-- MODIFIKASI
+        appBar: AppBar(
+          title: const Text('Manajemen Akun Sosial'),
+          backgroundColor: Colors.transparent, // <-- Tambahan
+          elevation: 0, // <-- Tambahan
+        ),
+        body: socialsAsyncValue.when(
+          data: (accounts) {
+            if (accounts.isEmpty) {
+              return const Center(
+                child: Text('Belum ada akun sosial yang ditambahkan.'),
               );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddSocialDialog(context, ref),
-        child: const Icon(Icons.add),
+            }
+            return ListView.builder(
+              itemCount: accounts.length,
+              itemBuilder: (context, index) {
+                final account = accounts[index];
+                return ListTile(
+                  leading: Icon(_getPlatformIcon(account.platform)),
+                  title: Text(account.username),
+                  subtitle: Text(account.platform.name),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                    onPressed: () {
+                      ref
+                          .read(firestoreServiceProvider)
+                          .deleteSocialAccount(account.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Akun "${account.username}" dihapus.',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showAddSocialDialog(context, ref),
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
@@ -132,7 +137,6 @@ class SocialManagementPage extends ConsumerWidget {
             style: const TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.green,
-          // --- PERBAIKAN DI SINI ---
           behavior: SnackBarBehavior.floating,
         ),
       );

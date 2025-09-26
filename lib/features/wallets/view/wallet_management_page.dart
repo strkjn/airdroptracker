@@ -1,7 +1,6 @@
-// lib/features/wallets/view/wallet_management_page.dart
-
 import 'package:airdrop_flow/core/models/wallet_model.dart';
 import 'package:airdrop_flow/core/providers/firebase_providers.dart';
+import 'package:airdrop_flow/core/widgets/app_background.dart'; // <-- IMPORT BARU
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airdrop_flow/core/widgets/custom_form_dialog.dart';
@@ -13,49 +12,55 @@ class WalletManagementPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final walletsAsyncValue = ref.watch(walletsStreamProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Manajemen Wallet')),
-      body: walletsAsyncValue.when(
-        data: (wallets) {
-          if (wallets.isEmpty) {
-            return const Center(
-              child: Text('Belum ada wallet yang ditambahkan.'),
-            );
-          }
-          return ListView.builder(
-            itemCount: wallets.length,
-            itemBuilder: (context, index) {
-              final wallet = wallets[index];
-              return ListTile(
-                title: Text(wallet.walletName),
-                subtitle: Text(wallet.publicAddress),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                  onPressed: () {
-                    ref.read(firestoreServiceProvider).deleteWallet(wallet.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Wallet "${wallet.walletName}" dihapus.',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        backgroundColor: Colors.red.shade700,
-                        // --- PERBAIKAN DI SINI ---
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                ),
+    return AppBackground( // <-- WIDGET DITAMBAHKAN
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // <-- MODIFIKASI
+        appBar: AppBar(
+          title: const Text('Manajemen Wallet'),
+          backgroundColor: Colors.transparent, // <-- Tambahan
+          elevation: 0, // <-- Tambahan
+        ),
+        body: walletsAsyncValue.when(
+          data: (wallets) {
+            if (wallets.isEmpty) {
+              return const Center(
+                child: Text('Belum ada wallet yang ditambahkan.'),
               );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddWalletDialog(context, ref),
-        child: const Icon(Icons.add),
+            }
+            return ListView.builder(
+              itemCount: wallets.length,
+              itemBuilder: (context, index) {
+                final wallet = wallets[index];
+                return ListTile(
+                  title: Text(wallet.walletName),
+                  subtitle: Text(wallet.publicAddress),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                    onPressed: () {
+                      ref.read(firestoreServiceProvider).deleteWallet(wallet.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Wallet "${wallet.walletName}" dihapus.',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showAddWalletDialog(context, ref),
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
@@ -106,7 +111,6 @@ class WalletManagementPage extends ConsumerWidget {
             style: const TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.green,
-          // --- PERBAIKAN DI SINI ---
           behavior: SnackBarBehavior.floating,
         ),
       );

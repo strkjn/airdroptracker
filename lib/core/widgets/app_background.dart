@@ -22,8 +22,8 @@ class AppBackground extends StatelessWidget {
             left: -size.width * 0.7,
             top: -size.height * 0.6,
             child: Container(
-              height: size.height * 1.5,
-              width: size.width * 2.0,
+              height: size.height * 1,
+              width: size.width * 1,
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
@@ -42,8 +42,8 @@ class AppBackground extends StatelessWidget {
             // 1. Posisi diturunkan sedikit (nilai top mendekati 0)
             top: -size.height * 0.1, 
             child: Container(
-              height: size.height * 1.2,
-              width: size.width * 2.0,
+              height: size.height * 1,
+              width: size.width * 1,
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
